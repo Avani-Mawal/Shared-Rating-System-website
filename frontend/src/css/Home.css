@@ -1,0 +1,99 @@
+.home-container {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    color: #333;
+  }
+  
+  .header {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 20px;
+    background-color: #f4f1ea;
+    border-bottom: 2px solid #d6c7ae;
+  }
+  
+  .logo {
+    font-size: 24px;
+    font-weight: bold;
+    color: #6a4f4b;
+  }
+  
+  nav ul {
+    list-style: none;
+    display: flex;
+    gap: 20px;
+  }
+  
+  nav ul li {
+    display: inline;
+  }
+  
+  nav ul li a {
+    text-decoration: none;
+    color: #333;
+    font-weight: bold;
+  }
+  
+  .hero {
+    background-color: #f9f7f4;
+    padding: 50px 20px;
+  }
+  
+  .hero h1 {
+    font-size: 36px;
+  }
+  
+  .hero p {
+    font-size: 18px;
+    margin: 10px 0;
+  }
+  
+  .hero button {
+    background-color: #6a4f4b;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 5px;
+  }
+  
+  .hero button:hover {
+    background-color: #543d39;
+  }
+  
+  .popular-books {
+    padding: 30px 20px;
+  }
+  
+  .books-grid {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .book-card {
+    background-color: #f4f1ea;
+    padding: 15px;
+    border-radius: 5px;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
+    width: 200px;
+  }
+  
+  .book-card h3 {
+    font-size: 18px;
+    margin-bottom: 5px;
+  }
+  
+  .book-card p {
+    font-size: 14px;
+    color: #666;
+  }
+  
+  .footer {
+    padding: 20px;
+    background-color: #f4f1ea;
+    margin-top: 30px;
+  }
+  
