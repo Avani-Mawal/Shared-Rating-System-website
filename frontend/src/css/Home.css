@@ -1,3 +1,8 @@
+body{
+  margin : 0;
+  padding : 0;
+}
+
 .home-container {
     font-family: Arial, sans-serif;
     text-align: center;

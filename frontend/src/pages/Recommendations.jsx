@@ -16,8 +16,8 @@ const Home = () => {
           credentials: "include",
         });
         await response.json();
-        if (response.status === 200) {
-          navigate("/dashboard");
+        if (response.status !== 200) {
+            navigate("/login");
         }
       } catch (error) {
         console.error("Error checking login status:", error);
@@ -34,8 +34,8 @@ const Home = () => {
     <div className="home-container">
       <Navbar />
       <section className="hero">
-        <h1>Discover & Share Books You Love</h1>
-        <p>Track your reading, review books, and connect with other readers.</p>
+        <h1>Recommendations</h1>
+        <p>Here are some books we think you'll love.</p>
         <button onClick={() => navigate("/signup")}>Join for Free</button>
       </section>
 
