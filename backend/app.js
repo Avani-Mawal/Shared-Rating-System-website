@@ -10,10 +10,10 @@ const port = 4000;
 // PostgreSQL connection
 // NOTE: use YOUR postgres username and password here
 const pool = new Pool({
-  user: 'sanskar',
+  user: 'mugdha',
   host: 'localhost',
-  database: 'ecommerce',
-  password: 'mugdhaorzz',
+  database: 'library',
+  password: 'avaniorzz',
   port: 5432,
 });
 
@@ -56,30 +56,47 @@ function isAuthenticated(req, res, next) {
 // return JSON object with the following fields: {username, email, password}
 // use correct status codes and messages mentioned in the lab document
 app.post('/signup', async (req, res) => {
-  const { username, email, password } = req.body;
+  const { first_name, last_name, username, email, password, dob } = req.body;
   try {
     // Hash the password
     console.log(req.body);
     const hashedPassword = await bcrypt.hash(password, 10);
     // Insert into the users table
-
+    console.log("S");
     const emailCheck = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     if (emailCheck.rows.length > 0) {
       return res.status(400).json({ message: "Email already registered." });
     }
-
+    console.log("S");
     const userIDrow = await pool.query('SELECT COUNT(*) FROM users');
+    console.log("S");
     const userID = parseInt(userIDrow.rows[0].count,10) + 1;
-    const query = "INSERT INTO users (user_id, username, email, password_hash) VALUES ($1, $2, $3, $4)";
-    await pool.query(query, [userID, username, email, hashedPassword]);
+    const query = "INSERT INTO users (user_id, username, first_name, last_name, email, password_hash, date_joined, dob) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, $7)";
+    // const query = "INSERT INTO users (user_id, username, first_name, last_name, email, password_hash, date_joined, dob) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6)";
+    await pool.query(query, [userID, username, first_name, last_name, email, hashedPassword, dob]);
+    console.log("S");
     const q2 = "SELECT user_id FROM users WHERE email = $1";
     const result = await pool.query(q2, [email]);
+    console.log("S");
     req.session.userId = result.rows[0].user_id;
     res.status(200).json({ message: "User Registered Successfully" });
   } catch (error) {
     let message = "Error inserting user.";
     console.error(message, error);
     res.status(500).json({ message: "Error signing up" });
+  }
+});
+
+/// Mugdha : for genres
+app.post('/select-genres', async (req, res) => {
+  const { userId, genres } = req.body;
+  try {
+    const query = "UPDATE users SET genres = $1 WHERE user_id = $2";
+    await pool.query(query, [genres, userId]);
+    res.status(200).json({ message: "Genres updated successfully" });
+  } catch (error) {
+    console.error("Error updating genres", error);
+    res.status(500).json({ message: "Error updating genres" });
   }
 });
 
@@ -133,19 +150,115 @@ app.post("/logout", (req, res) => {
 });
 
 ////////////////////////////////////////////////////
-// APIs for the products
-// use correct status codes and messages mentioned in the lab document
-// TODO: Fetch and display all products from the database
+// Mugdha : Using this API to list books in bookshelves
+// cover, title, author, avg_rating, rating, shelves, review, date_read, date_added
 app.get("/list-products", isAuthenticated, async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM Products ORDER BY product_id');
+        const query = `SELECT 
+        nbooks.book_id,
+        nbooks.name,
+        nbooks.author_id,
+        nbooks.avg_rating,
+        bs.rating,
+        bs.shelf_name,
+        bs.date_read,
+        bs.date_added
+      FROM Books AS nbooks
+      LEFT OUTER JOIN (
+        SELECT *
+        FROM Bookshelves
+        NATURAL JOIN UserBooks
+      ) AS bs
+      ON nbooks.book_id = bs.book_id
+      WHERE bs.user_id = $1;`
+      const result = await pool.query(query, [req.session.userId]);
     const products = result.rows;
-    res.status(200).json({ message: "Products fetched successfully", products},);
+    res.status(200).json({ message: "Books fetched successfully", products });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error listing products" });
+    console.error("Error listing books:", error);
+    res.status(500).json({ message: "Error listing books" });
   }
+});
 
+// Mugdha : get book details
+app.get('/books/:id', async (req, res) => {
+  const bookId = req.params.id;
+  const bookQuery = await pool.query(
+    'SELECT * FROM books WHERE id = $1',
+    [bookId]
+  );
+  const shelvesQuery = await pool.query(
+    'SELECT shelf_name FROM bookshelves WHERE book_id = $1',
+    [bookId]
+  );
+  const reviewsQuery = await pool.query(
+    'SELECT * FROM reviews WHERE book_id = $1',
+    [bookId]
+  );
+
+  res.json({
+    book: {
+      ...bookQuery.rows[0],
+      reviews: reviewsQuery.rows,
+    },
+    shelves: shelvesQuery.rows,
+  });
+});
+
+// API to rate a book
+app.post("/rate-book", isAuthenticated, async (req, res) => {
+  const { bookId, rating } = req.body;
+  const userId = req.session.userId;
+
+  try {
+    // Check if the book exists
+    const bookQuery = "SELECT * FROM books WHERE book_id = $1";
+    const bookResult = await pool.query(bookQuery, [bookId]);
+    if (bookResult.rows.length === 0) {
+      return res.status(400).json({ message: "Invalid book ID" });
+    }
+
+    // Check if the user has already rated the book
+    const ratingQuery = "SELECT * FROM ratings WHERE user_id = $1 AND book_id = $2";
+    const ratingResult = await pool.query(ratingQuery, [userId, bookId]);
+
+    if (ratingResult.rows.length === 0) {
+      // Insert new rating
+      const insertQuery = "INSERT INTO ratings (user_id, book_id, rating) VALUES ($1, $2, $3)";
+      await pool.query(insertQuery, [userId, bookId, rating]);
+    } else {
+      // Update existing rating
+      const updateQuery = "UPDATE ratings SET rating = $1 WHERE user_id = $2 AND book_id = $3";
+      await pool.query(updateQuery, [rating, userId, bookId]);
+    }
+
+    // Update the average rating of the book
+    const avgRatingQuery = `
+      UPDATE books
+      SET avg_rating = (
+        SELECT AVG(rating)::numeric(10,2)
+        FROM ratings
+        WHERE book_id = $1
+      )
+      WHERE book_id = $1
+    `;
+    await pool.query(avgRatingQuery, [bookId]);
+
+    res.status(200).json({ message: "Book rated successfully" });
+  } catch (error) {
+    console.error("Error rating book:", error);
+    res.status(500).json({ message: "Error rating book" });
+  }
+});
+
+// Mugdha : regarding book-details page, Add a shelf
+app.post('/shelves', async (req, res) => {
+  const { bookId, name } = req.body;
+  const insert = await pool.query(
+    'INSERT INTO bookshelves (book_id, name) VALUES ($1, $2) RETURNING *',
+    [bookId, name]
+  );
+  res.json(insert.rows[0]);
 });
 
 // APIs for cart: add_to_cart, display-cart, remove-from-cart
