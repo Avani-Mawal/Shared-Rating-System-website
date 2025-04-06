@@ -1,0 +1,143 @@
+/* Book-details.css */
+
+.container {
+    display: flex;
+    flex-direction: row;
+    gap: 40px;
+    padding: 40px;
+    max-width: 1200px;
+    margin: 0 auto;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  
+  .image-section {
+    flex: 1;
+    text-align: center;
+  }
+  
+  .image-section .cover {
+    width: 250px;
+    height: 370px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  }
+  
+  .image-section .button,
+  .image-section .amazon-button {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    font-size: 14px;
+    background-color: #f4f4f4;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .image-section .amazon-button {
+    background-color: #ff9900;
+    color: white;
+    border: none;
+  }
+  
+  .image-section .rating {
+    font-weight: bold;
+    font-size: 16px;
+    margin-top: 10px;
+  }
+  
+  .details-section {
+    flex: 2;
+  }
+  
+  .details-section h2 {
+    margin: 0;
+    font-size: 28px;
+    color: #333;
+  }
+  
+  .details-section h4 {
+    font-size: 18px;
+    color: #777;
+    margin-bottom: 20px;
+  }
+  
+  .details-section .description {
+    font-size: 16px;
+    line-height: 1.6;
+    margin-bottom: 20px;
+  }
+  
+  .meta-section p {
+    margin: 8px 0;
+    font-size: 14px;
+    color: #444;
+  }
+  
+  .meta-section strong {
+    color: #000;
+  }
+  
+  .details-section h3 {
+    margin-top: 30px;
+    margin-bottom: 10px;
+    font-size: 20px;
+    color: #222;
+  }
+  
+  .details-section ul {
+    list-style-type: disc;
+    padding-left: 20px;
+  }
+  
+  .details-section li {
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 5px;
+  }
+  
+  /* Shelf Controls */
+  .details-section select,
+  .details-section input[type="text"] {
+    padding: 6px 10px;
+    margin-right: 10px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  
+  .details-section button {
+    padding: 6px 14px;
+    background-color: #3366cc;
+    color: white;
+    border: none;
+    font-size: 14px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .details-section button:hover {
+    background-color: #254a9b;
+  }
+  
+  /* Responsive layout */
+  @media screen and (max-width: 768px) {
+    .container {
+      flex-direction: column;
+      padding: 20px;
+    }
+  
+    .image-section,
+    .details-section {
+      width: 100%;
+      text-align: center;
+    }
+  
+    .details-section {
+      text-align: left;
+    }
+  }
+      

@@ -10,7 +10,7 @@ const port = 4000;
 // PostgreSQL connection
 // NOTE: use YOUR postgres username and password here
 const pool = new Pool({
-  user: 'mugdha',
+  user: 'sanskar',
   host: 'localhost',
   database: 'shared_reviews',
   password: 'mugdhaorzz',
@@ -56,7 +56,7 @@ function isAuthenticated(req, res, next) {
 // return JSON object with the following fields: {username, email, password}
 // use correct status codes and messages mentioned in the lab document
 app.post('/signup', async (req, res) => {
-
+  const { username, email, password, firstName, lastName, genres, dob } = req.body;
   try {
     console.log(req.body);
 
@@ -479,6 +479,19 @@ app.get("/order-confirmation", isAuthenticated, async (req, res) => {
     res.status(500).json({ message: "Error fetching order confirmation" });
   }
 
+});
+
+app.get("/recommendations" , isAuthenticated, async (req, res) => {
+  const user_id = req.session.userId;
+  try {
+    const query = "SELECT * FROM recommendations WHERE user_id = $1";
+    const result = await pool.query(query, [user_id]);
+    const recommendations = result.rows;
+    res.status(200).json({ message: "Recommendations fetched successfully", recommendations });
+  } catch (error) {
+    console.error("Error fetching recommendations:", error);
+    res.status(500).json({ message: "Error fetching recommendations" });
+  }
 });
 
 ////////////////////////////////////////////////////

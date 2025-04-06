@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { apiUrl } from "../config/config";
 import "../css/Navbar.css";
@@ -6,6 +6,34 @@ import "../css/Navbar.css";
 const Navbar = () => {
   const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [loading, setLoading] = useState(true); // ⬅️ Loading state
+
+  useEffect(() => {
+    const checkLoginStatus = async () => {
+      try {
+        const response = await fetch(`${apiUrl}/isLoggedIn`, {
+          credentials: "include",
+        });
+        if (response.status !== 200) {
+          setLoggedIn(false);
+          setLoading(false); // ⬅️ Done loading, safe to show page
+        } else {
+          setLoggedIn(true);
+          setLoading(false); // ⬅️ Done loading, safe to show page
+        }
+      } catch (error) {
+        console.error("Error checking login status:", error);
+        navigate("/login"); // ⬅️ In case of error, redirect too
+      }
+    };
+
+    checkLoginStatus();
+  }, [navigate]);
+
+  if (loading) return (
+    <div className="loading">Loading...</div>
+  );
 
   const handleLogout = async (e) => {
     e.preventDefault();
@@ -15,7 +43,7 @@ const Navbar = () => {
         credentials: "include",
       });
       if (response.status === 200) {
-        navigate("/login");
+        setLoggedIn(false);
       } else {
         alert("Logout failed");
       }
@@ -31,7 +59,10 @@ const Navbar = () => {
 
   return (
     <nav className="navbar">
-      <div className="navbar-logo" onClick={() => navigate("/")}>GoodReads Clone</div>
+      <div className="navbar-logo" onClick={() => navigate("/")}>
+        GoodReads Clone
+      </div>
+
       <div className="navbar-links">
         <a href="/">Home</a>
         <a href="/myBooks">My Books</a>
@@ -52,8 +83,22 @@ const Navbar = () => {
 
         <a href="/community">Community</a>
       </div>
+
       <div className="navbar-actions">
-        <button className="logout-btn" onClick={handleLogout}>Logout</button>
+        {loggedIn ? (
+          <button className="logout-btn" onClick={handleLogout}>
+            Logout
+          </button>
+        ) : (
+          <>
+            <button className="login-btn" onClick={() => navigate("/login")}>
+              Login
+            </button>
+            <button className="signup-btn" onClick={() => navigate("/signup")}>
+              Signup
+            </button>
+          </>
+        )}
       </div>
     </nav>
   );
