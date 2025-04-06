@@ -8,6 +8,7 @@ import "../css/Home.css";
 const Home = () => {
   const navigate = useNavigate();
   const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const checkLoginStatus = async () => {
@@ -19,6 +20,7 @@ const Home = () => {
         if (response.status === 200) {
           navigate("/dashboard");
         }
+        setLoading(false);
       } catch (error) {
         console.error("Error checking login status:", error);
       }
@@ -29,6 +31,10 @@ const Home = () => {
     // Fetch popular books (dummy data)
     setBooks([]);
   }, [navigate]);
+
+  if (loading) {
+    return <div className="loading">Loading...</div>;
+  }
 
   return (
     <div className="home-container">

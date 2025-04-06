@@ -1,0 +1,148 @@
+/* Genres.css */
+
+.genres-container {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+  }
+  
+  .genre-main {
+    padding: 20px;
+    max-width: 1000px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .genre-header {
+    text-align: center;
+    margin-bottom: 30px;
+  }
+  
+  .genre-header h1 {
+    font-size: 32px;
+    margin-bottom: 12px;
+  }
+  
+  .genre-search-form {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+  }
+  
+  .genre-search-form input {
+    padding: 8px 12px;
+    font-size: 14px;
+    width: 250px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  
+  .genre-search-form button {
+    padding: 8px 14px;
+    font-size: 14px;
+    background-color: #eee;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  /* Centered book sections */
+  .genre-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+  }
+  
+  /* Books by genre */
+  .genre-left {
+    width: 100%;
+  }
+  
+  .genre-section {
+    margin-bottom: 40px;
+  }
+  
+  .genre-section h2 {
+    font-size: 22px;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+  
+  .genre-book-row {
+    display: flex;
+    gap: 16px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: center;
+    margin-bottom: 5px;
+  }
+  
+  .genre-book-row img {
+    width: 120px;
+    height: 180px;
+    object-fit: cover;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+  
+  .more-genre-link {
+    display: block;
+    text-align: center;
+    font-size: 14px;
+    color: #3366cc;
+    text-decoration: none;
+  }
+  
+  /* Favorite genres (optional) */
+  .favorite-genres {
+    text-align: center;
+    margin: 40px 0 20px;
+  }
+  
+  .favorite-genres h3 {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+  
+  .genre-list {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  
+  .genre-list p {
+    font-size: 14px;
+    margin: 4px;
+    cursor: pointer;
+  }
+  
+  /* Browse genres (all genres at the bottom) */
+  .browse-genres {
+    margin-top: 50px;
+    text-align: center;
+  }
+  
+  .browse-genres h3 {
+    font-size: 18px;
+    margin-bottom: 15px;
+  }
+  
+  .browse-genres .genre-list {
+    columns: 3;
+    column-gap: 30px;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+  
+  .more-genres-link {
+    display: block;
+    margin-top: 10px;
+    font-size: 14px;
+    color: #3366cc;
+    text-decoration: none;
+  }
+  

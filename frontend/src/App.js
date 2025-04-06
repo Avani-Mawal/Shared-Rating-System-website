@@ -5,6 +5,8 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/Notfound";  
 import Recommendations from "./pages/Recommendations";
+import Genres from "./pages/Genres";
+import GenreDetail from "./pages/GenreDetail";
 
 function App() {
   return (
@@ -13,8 +15,10 @@ function App() {
       <Route path="/signup" element={<Signup />} />
       <Route path="/login" element={<Login />} />
       <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="*" element={<NotFound />} />
       <Route path="/recommendations" element={<Recommendations />} />
+      <Route path="/genres" element={<Genres />} />
+      <Route path="/genre/:genreName" element={<GenreDetail />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }

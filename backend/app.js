@@ -12,7 +12,7 @@ const port = 4000;
 const pool = new Pool({
   user: 'sanskar',
   host: 'localhost',
-  database: 'ecommerce',
+  database: 'shared_reviews',
   password: 'mugdhaorzz',
   port: 5432,
 });
@@ -56,30 +56,75 @@ function isAuthenticated(req, res, next) {
 // return JSON object with the following fields: {username, email, password}
 // use correct status codes and messages mentioned in the lab document
 app.post('/signup', async (req, res) => {
-  const { username, email, password } = req.body;
-  try {
-    // Hash the password
-    console.log(req.body);
-    const hashedPassword = await bcrypt.hash(password, 10);
-    // Insert into the users table
+  const { username, email, password, firstName, lastName, genres, dob } = req.body;
 
+  try {
+    console.log(req.body);
+
+    // Check if email is already registered
     const emailCheck = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     if (emailCheck.rows.length > 0) {
       return res.status(400).json({ message: "Email already registered." });
     }
 
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Generate new user_id
     const userIDrow = await pool.query('SELECT COUNT(*) FROM users');
-    const userID = parseInt(userIDrow.rows[0].count,10) + 1;
-    const query = "INSERT INTO users (user_id, username, email, password_hash) VALUES ($1, $2, $3, $4)";
-    await pool.query(query, [userID, username, email, hashedPassword]);
-    const q2 = "SELECT user_id FROM users WHERE email = $1";
-    const result = await pool.query(q2, [email]);
-    req.session.userId = result.rows[0].user_id;
+    const userID = parseInt(userIDrow.rows[0].count, 10) + 1;
+
+    // Insert user into the database
+    const insertQuery = `
+      INSERT INTO users (user_id, username, email, password_hash, first_name, last_name, genres, dob)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `;
+
+    await pool.query(insertQuery, [
+      userID,
+      username,
+      email,
+      hashedPassword,
+      firstName,
+      lastName,
+      JSON.stringify(genres), // assuming genres is an array
+      dob
+    ]);
+
+    // Set session
+    req.session.userId = userID;
+
     res.status(200).json({ message: "User Registered Successfully" });
+
   } catch (error) {
-    let message = "Error inserting user.";
-    console.error(message, error);
+    console.error("Error inserting user:", error);
     res.status(500).json({ message: "Error signing up" });
+  }
+});
+
+app.get("/all-genres", async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM genres');
+    const genres = result.rows;
+    res.status(200).json({ message: "Genres fetched successfully", genres });
+  } catch (error) {
+    console.error("Error fetching genres:", error);
+    res.status(500).json({ message: "Error fetching genres" });
+  }
+}
+);
+
+app.get("/user-genres", async (req, res) => {
+  try {
+    const result = await pool.query('SELECT genres FROM users where user_id = $1', [req.session.userId]);
+    const genresString = result.rows[0].genres;
+    console.log(genresString);
+    const genres = JSON.parse(genresString);
+
+    res.status(200).json({ message: "Genres fetched successfully", genres });
+  } catch (error) {
+    console.error("Error fetching genres:", error);
+    res.status(500).json({ message: "Error fetching genres" });
   }
 });
 
@@ -132,153 +177,37 @@ app.post("/logout", (req, res) => {
   });
 });
 
-////////////////////////////////////////////////////
-// APIs for the products
-// use correct status codes and messages mentioned in the lab document
-// TODO: Fetch and display all products from the database
-app.get("/list-products", isAuthenticated, async (req, res) => {
+app.post("/genre-books", async (req, res) => {
+  const { genres } = req.body;
   try {
-    const result = await pool.query('SELECT * FROM Products ORDER BY product_id');
-    const products = result.rows;
-    res.status(200).json({ message: "Products fetched successfully", products},);
+    let books = {};
+    for (let i = 0; i < genres.length; i++) {
+      const query = "SELECT * FROM books WHERE genre LIKE $1 ORDER BY publ_date DESC";
+      const result = await pool.query(query, [`%${genres[i]}%`]);
+      if (result.rows.length !== 0) {
+        books[genres[i]] = result.rows;
+      }
+    }
+    res.status(200).json({ message: "Books fetched successfully", books });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error listing products" });
+    console.error("Error fetching books:", error);
+    res.status(500).json({ message: "Error fetching books" });
   }
-
 });
 
-// APIs for cart: add_to_cart, display-cart, remove-from-cart
-// TODO: impliment add to cart API which will add the quantity of the product specified by the user to the cart
-app.post("/add-to-cart", isAuthenticated, async (req, res) => {
-  const { productId, quantity } = req.body;
+app.post("/genre-description", async (req, res) => {
+  const { genre } = req.query;
   try {
-    const product_id = productId;
-    const query1 = "SELECT * FROM products WHERE product_id = $1";
-    const result = await pool.query(query1, [product_id]);
-    const product = result.rows[0];
+    const query = "SELECT description FROM genres WHERE genre = $1";
+    const result = await pool.query(query, [genre]);
     if (result.rows.length === 0) {
-      return res.status(400).json({ message: "Invalid Product ID" });
+      return res.status(400).json({ message: "Genre not found" });
     }
-
-    const q = parseInt(quantity, 10);
-    const stock_quantity = parseInt(result.rows[0].stock_quantity, 10);
-
-    const user_id = req.session.userId;
-    const query2 = "SELECT * FROM cart WHERE user_id = $1 AND item_id = $2";
-    const result2 = await pool.query(query2, [user_id, product_id]);
-    const cart_quantity = result2.rows.length === 0 ? 0 : parseInt(result2.rows[0].quantity,10);
-
-
-    if (stock_quantity < q + cart_quantity) {
-      return res.status(400).json({ message: "Insufficient stock for " + product.name });
-    }
-
-    if (q + cart_quantity < 0) {
-      const query = "DELETE FROM cart WHERE user_id = $1 AND item_id = $2";
-      await pool.query(query, [user_id, product_id]);
-      return res.status(200).json( { message: "Successfully added " + q + " of "+ product.name+" to your cart." });
-    }
-
-
-    if (result2.rows.length === 0) {
-      const query3 = "INSERT INTO cart (user_id, item_id, quantity) VALUES ($1, $2, $3)";
-      await pool.query(query3, [user_id, product_id, q ]);
-    } else {
-      const query3 = "UPDATE cart SET quantity = $1 WHERE user_id = $2 AND item_id = $3";
-      await pool.query(query3, [q + cart_quantity, user_id, product_id]);
-    }
-    return res.status(200).json( { message: "Successfully added " + q + " of "+ product.name+" to your cart." });
+    const description = result.rows[0].description;
+    res.status(200).json({ message: "Description fetched successfully", description });
   } catch (error) {
-    console.error("Error adding to cart:", error);
-    res.status(500).json({message : "Error adding to cart."});
-  }
-});
-
-// TODO: Implement display-cart API which will returns the products in the cart
-app.get("/display-cart", isAuthenticated, async (req, res) => {
-  const user_id = req.session.userId;
-  try {
-    const result = await pool.query('SELECT * FROM Cart, Products WHERE user_id = $1 AND item_id = product_id ORDER BY item_id', [user_id]);
-    const sum = await pool.query('SELECT SUM(price*quantity) FROM Cart, Products WHERE user_id = $1 AND item_id = product_id', [user_id]);
-    if (result.rows.length === 0) {
-      return res.status(400).json({ message: "No items in cart.", cart: [], totalPrice: 0});
-    }
-    const cart = result.rows;
-    const totalPrice = sum.rows[0].sum;
-    res.status(200).json({ message: "Cart fetched successfully", cart, totalPrice});
-
-  } catch (error) {
-    console.error("Error displaying cart:", error);
-    res.status(500).json({ message: "Error fetching cart" });
-  }
-});
-
-// TODO: Implement remove-from-cart API which will remove the product from the cart
-app.post("/remove-from-cart", isAuthenticated, async (req, res) => {
-  const { productId } = req.body;
-  try {
-    const product_id = parseInt(productId, 10);
-    const user_id = req.session.userId;
-    const check_query = "SELECT * FROM cart WHERE user_id = $1 AND item_id = $2";
-    const check_result = await pool.query(check_query, [user_id, product_id]);
-
-    if (check_result.rows.length === 0) {
-      return res.status(400).json({message: "Item not present in your cart."});
-    }
-
-    const query = "DELETE FROM cart WHERE user_id = $1 AND item_id = $2";
-    await pool.query(query, [user_id, product_id]);
-    res.status(200).json({message: "Item removed from your cart successfully."});
-
-  } catch (error) {
-    console.error("Error removing from cart:", error);
-    res.status(500).json({ message: "Error removing item from cart" });
-  }
-});
-// TODO: Implement update-cart API which will update the quantity of the product in the cart
-app.post("/update-cart", isAuthenticated, async (req, res) => {
-  const { productId, quantity } = req.body;
-  try {
-    const product_id = parseInt(productId, 10);
-    const query1 = "SELECT * FROM products WHERE product_id = $1";
-    const result = await pool.query(query1, [product_id]);
-    const product = result.rows[0];
-    if (result.rows.length === 0) {
-      return res.status(500).json({ message: "Error Updating Cart" });
-    }
-
-    const q = parseInt(quantity, 10);
-    const stock_quantity = parseInt(result.rows[0].stock_quantity, 10);
-
-    const user_id = req.session.userId;
-    const query2 = "SELECT * FROM cart WHERE user_id = $1 AND item_id = $2";
-    const result2 = await pool.query(query2, [user_id, product_id]);
-    const cart_quantity = result2.rows.length === 0 ? 0 : parseInt(result2.rows[0].quantity,10);
-
-
-    if (stock_quantity < q + cart_quantity) {
-      return res.status(400).json({ message: "Requested quantity exceeds available stock" });
-    }
-
-    if (q + cart_quantity <= 0) {
-      const query = "DELETE FROM cart WHERE user_id = $1 AND item_id = $2";
-      await pool.query(query, [user_id, product_id]);
-      return res.status(200).json( { message: ("Successfully added $1 of $2 to your cart.", [q, product.name]) });
-    }
-
-
-    if (result2.rows.length === 0) {
-      const query3 = "INSERT INTO cart (user_id, item_id, quantity) VALUES ($1, $2, $3)";
-      await pool.query(query3, [user_id, product_id, q ]);
-    } else {
-      const query3 = "UPDATE cart SET quantity = $1 WHERE user_id = $2 AND item_id = $3";
-      await pool.query(query3, [q + cart_quantity, user_id, product_id]);
-    }
-    return res.status(200).json( { message: ("Successfully added $1 of $2 to your cart.", [q, product.name]) });
-  } catch (error) {
-    console.error("Error adding to cart:", error);
-    res.status(500).json({message : "Error updating cart."});
+    console.error("Error fetching description:", error);
+    res.status(500).json({ message: "Error fetching description" });
   }
 });
 
