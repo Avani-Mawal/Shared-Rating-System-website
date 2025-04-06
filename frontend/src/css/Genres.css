@@ -80,7 +80,7 @@
     margin-bottom: 5px;
   }
   
-  .genre-book-row img {
+  .genre-book-row a img {
     width: 120px;
     height: 180px;
     object-fit: cover;

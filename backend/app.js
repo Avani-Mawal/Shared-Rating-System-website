@@ -12,13 +12,8 @@ const port = 4000;
 const pool = new Pool({
   user: 'mugdha',
   host: 'localhost',
-<<<<<<< HEAD
   database: 'shared_reviews',
   password: 'mugdhaorzz',
-=======
-  database: 'library',
-  password: 'avaniorzz',
->>>>>>> e63e6763bc26ac99c27f490635ffc1d8a831aefc
   port: 5432,
 });
 
@@ -61,27 +56,16 @@ function isAuthenticated(req, res, next) {
 // return JSON object with the following fields: {username, email, password}
 // use correct status codes and messages mentioned in the lab document
 app.post('/signup', async (req, res) => {
-<<<<<<< HEAD
-  const { username, email, password, firstName, lastName, genres, dob } = req.body;
 
   try {
     console.log(req.body);
 
     // Check if email is already registered
-=======
-  const { first_name, last_name, username, email, password, dob } = req.body;
-  try {
-    // Hash the password
-    console.log(req.body);
-    const hashedPassword = await bcrypt.hash(password, 10);
-    // Insert into the users table
-    console.log("S");
->>>>>>> e63e6763bc26ac99c27f490635ffc1d8a831aefc
+
     const emailCheck = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     if (emailCheck.rows.length > 0) {
       return res.status(400).json({ message: "Email already registered." });
     }
-<<<<<<< HEAD
 
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -110,20 +94,7 @@ app.post('/signup', async (req, res) => {
     // Set session
     req.session.userId = userID;
 
-=======
-    console.log("S");
-    const userIDrow = await pool.query('SELECT COUNT(*) FROM users');
-    console.log("S");
-    const userID = parseInt(userIDrow.rows[0].count,10) + 1;
-    const query = "INSERT INTO users (user_id, username, first_name, last_name, email, password_hash, date_joined, dob) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, $7)";
-    // const query = "INSERT INTO users (user_id, username, first_name, last_name, email, password_hash, date_joined, dob) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6)";
-    await pool.query(query, [userID, username, first_name, last_name, email, hashedPassword, dob]);
-    console.log("S");
-    const q2 = "SELECT user_id FROM users WHERE email = $1";
-    const result = await pool.query(q2, [email]);
-    console.log("S");
-    req.session.userId = result.rows[0].user_id;
->>>>>>> e63e6763bc26ac99c27f490635ffc1d8a831aefc
+
     res.status(200).json({ message: "User Registered Successfully" });
 
   } catch (error) {
@@ -132,7 +103,6 @@ app.post('/signup', async (req, res) => {
   }
 });
 
-<<<<<<< HEAD
 app.get("/all-genres", async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM genres');
@@ -156,18 +126,6 @@ app.get("/user-genres", async (req, res) => {
   } catch (error) {
     console.error("Error fetching genres:", error);
     res.status(500).json({ message: "Error fetching genres" });
-=======
-/// Mugdha : for genres
-app.post('/select-genres', async (req, res) => {
-  const { userId, genres } = req.body;
-  try {
-    const query = "UPDATE users SET genres = $1 WHERE user_id = $2";
-    await pool.query(query, [genres, userId]);
-    res.status(200).json({ message: "Genres updated successfully" });
-  } catch (error) {
-    console.error("Error updating genres", error);
-    res.status(500).json({ message: "Error updating genres" });
->>>>>>> e63e6763bc26ac99c27f490635ffc1d8a831aefc
   }
 });
 
@@ -220,7 +178,7 @@ app.post("/logout", (req, res) => {
   });
 });
 
-<<<<<<< HEAD
+
 app.post("/genre-books", async (req, res) => {
   const { genres } = req.body;
   try {
@@ -237,7 +195,7 @@ app.post("/genre-books", async (req, res) => {
     console.error("Error fetching books:", error);
     res.status(500).json({ message: "Error fetching books" });
   }
-=======
+});
 ////////////////////////////////////////////////////
 // Mugdha : Using this API to list books in bookshelves
 // cover, title, author, avg_rating, rating, shelves, review, date_read, date_added
@@ -348,7 +306,6 @@ app.post('/shelves', async (req, res) => {
     [bookId, name]
   );
   res.json(insert.rows[0]);
->>>>>>> e63e6763bc26ac99c27f490635ffc1d8a831aefc
 });
 
 app.post("/genre-description", async (req, res) => {

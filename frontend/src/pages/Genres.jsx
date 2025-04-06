@@ -126,7 +126,7 @@ const Genres = () => {
                 <h2>{genre.toUpperCase()}</h2>
                 <div className="genre-book-row">
                   {books.map((book, idx) => (
-                    <img key={idx} src={book.image_link} alt={book.title} />
+                    <a href = {`/books/${book.book_id}`}> <img key={idx} src={book.image_link} alt={book.name} /></a>
                   ))}
                 </div>
                 <a href={`/genre/${genre.toLowerCase()}`} className="more-genre-link"> More {genre.toLowerCase()}...</a>
