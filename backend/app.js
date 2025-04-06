@@ -143,6 +143,7 @@ app.post("/login", async (req, res) => {
     const user = result.rows[0];
     if (await bcrypt.compare(password, user.password_hash)) {
       req.session.userId = user.user_id;
+      // console.log(req.session.userId);
       res.status(200).json({ message: "Loggn successful" });
     } else {
       res.status(400).json({ message: "Invalid credentials" });
@@ -228,10 +229,10 @@ app.get("/list-products", isAuthenticated, async (req, res) => {
 });
 
 // Mugdha : get book details
-app.get('/books/:id', async (req, res) => {
-  const bookId = req.params.id;
+app.get('/books/:bookId', async (req, res) => {
+  const bookId = req.params.bookId;
   const bookQuery = await pool.query(
-    'SELECT * FROM books WHERE id = $1',
+    'SELECT * FROM books WHERE book_id = $1',
     [bookId]
   );
   const shelvesQuery = await pool.query(
@@ -239,10 +240,10 @@ app.get('/books/:id', async (req, res) => {
     [bookId]
   );
   const reviewsQuery = await pool.query(
-    'SELECT * FROM reviews WHERE book_id = $1',
-    [bookId]
+    'SELECT rating FROM reviews WHERE book_id = $1 and user_id = $2',
+    [bookId, req.session.userId]
   );
-
+  console.log(shelvesQuery.rows);
   res.json({
     book: {
       ...bookQuery.rows[0],
@@ -266,16 +267,19 @@ app.post("/rate-book", isAuthenticated, async (req, res) => {
     }
 
     // Check if the user has already rated the book
-    const ratingQuery = "SELECT * FROM ratings WHERE user_id = $1 AND book_id = $2";
+    const ratingQuery = "SELECT * FROM reviews WHERE user_id = $1 AND book_id = $2";
     const ratingResult = await pool.query(ratingQuery, [userId, bookId]);
 
     if (ratingResult.rows.length === 0) {
       // Insert new rating
-      const insertQuery = "INSERT INTO ratings (user_id, book_id, rating) VALUES ($1, $2, $3)";
-      await pool.query(insertQuery, [userId, bookId, rating]);
+      const reviewIdQuery = "SELECT COALESCE(MAX(review_id), 0) + 1 AS next_id FROM reviews";
+      const reviewIdResult = await pool.query(reviewIdQuery);
+      const reviewId = reviewIdResult.rows[0].next_id;
+      const insertQuery = "INSERT INTO reviews (review_id, user_id, book_id, rating) VALUES ($1, $2, $3, $4)";
+      await pool.query(insertQuery, [reviewId, userId, bookId, rating]);
     } else {
       // Update existing rating
-      const updateQuery = "UPDATE ratings SET rating = $1 WHERE user_id = $2 AND book_id = $3";
+      const updateQuery = "UPDATE reviews SET rating = $1 WHERE user_id = $2 AND book_id = $3";
       await pool.query(updateQuery, [rating, userId, bookId]);
     }
 
@@ -299,13 +303,89 @@ app.post("/rate-book", isAuthenticated, async (req, res) => {
 });
 
 // Mugdha : regarding book-details page, Add a shelf
-app.post('/shelves', async (req, res) => {
-  const { bookId, name } = req.body;
-  const insert = await pool.query(
-    'INSERT INTO bookshelves (book_id, name) VALUES ($1, $2) RETURNING *',
-    [bookId, name]
-  );
-  res.json(insert.rows[0]);
+app.post('/add-to-shelf', async (req, res) => {
+  console.log(req.session);
+  const { book_id, shelf_name } = req.body;
+  console.log("user_id:", req.session.userId);
+  console.log("Book ID:", book_id);
+  console.log("Shelf Name:", shelf_name);
+
+  try {
+    // Check if the entry already exists
+    const checkQuery = 'SELECT * FROM bookshelves WHERE user_id = $1 AND book_id = $2 AND shelf_name = $3';
+    const checkResult = await pool.query(checkQuery, [req.session.userId, book_id, shelf_name]);
+
+    if (checkResult.rows.length > 0) {
+      return res.status(400).json({ message: "Entry already exists in the shelf" });
+    }
+
+    // Insert the new entry
+    const insertQuery = 'INSERT INTO bookshelves (user_id, book_id, shelf_name) VALUES ($1, $2, $3)';
+    await pool.query(insertQuery, [req.session.userId, book_id, shelf_name]);
+
+    res.status(200).json({ message: "Book added to shelf successfully" });
+  } catch (error) {
+    console.error("Error adding to shelf:", error);
+    res.status(500).json({ message: "Error adding to shelf" });
+  }
+});
+
+// API to create a new shelf in books page
+app.post("/create-shelf-and-add-book", isAuthenticated, async (req, res) => {
+  const { book_id, shelf_name } = req.body;
+  const user_id = req.session.userId;
+  console.log("user_id:", user_id);
+  console.log("Book ID:", book_id);
+  
+  try {
+    // Check if the shelf already exists for the user
+    const checkQuery = "SELECT * FROM bookshelves WHERE user_id = $1 AND shelf_name = $2";
+    const checkResult = await pool.query(checkQuery, [user_id, shelf_name]);
+
+    if (checkResult.rows.length > 0) {
+      return res.status(400).json({ message: "Shelf already exists" });
+    }
+
+    // Insert the new shelf
+    const insertQuery = "INSERT INTO bookshelves (user_id, book_id, shelf_name) VALUES ($1, $2, $3)";
+    await pool.query(insertQuery, [user_id, book_id, shelf_name]);
+
+    res.status(200).json({ message: "Shelf created successfully" });
+  } catch (error) {
+    console.error("Error creating shelf:", error);
+    res.status(500).json({ message: "Error creating shelf" });
+  }
+});
+
+// API to create a new shelf in books page
+app.post("/create-shelf", isAuthenticated, async (req, res) => {
+  const { shelf_name } = req.body;
+  const user_id = req.session.userId;
+  // check this
+  // const referer = req.headers.referer || ""; // Default to an empty string if undefined
+  // const bookId = referer.includes('/') ? referer.split('/').pop() : null; // Extract bookId if valid
+  // console.log("SSS", referer, "Extracted bookId:", bookId);
+  // console.log("book_id: ", bookId);
+  console.log("Shelf Name:", shelf_name);
+  
+  try {
+    // Check if the shelf already exists for the user
+    const checkQuery = "SELECT * FROM bookshelves WHERE user_id = $1 AND shelf_name = $2";
+    const checkResult = await pool.query(checkQuery, [user_id, shelf_name]);
+
+    if (checkResult.rows.length > 0) {
+      return res.status(400).json({ message: "Shelf already exists" });
+    }
+
+    // Insert the new shelf
+    const insertQuery = "INSERT INTO bookshelves (user_id, book_id, shelf_name) VALUES ($1, $2, $3)";
+    await pool.query(insertQuery, [user_id, bookId, shelf_name]);
+
+    res.status(200).json({ message: "Shelf created successfully" });
+  } catch (error) {
+    console.error("Error creating shelf:", error);
+    res.status(500).json({ message: "Error creating shelf" });
+  }
 });
 
 app.post("/genre-description", async (req, res) => {
