@@ -105,9 +105,10 @@ app.post('/signup', async (req, res) => {
 
 app.get("/all-genres", async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM genres');
+    const result = await pool.query('SELECT distinct genre_name FROM genres');
     const genres = result.rows;
     res.status(200).json({ message: "Genres fetched successfully", genres });
+    console.log(genres);
   } catch (error) {
     console.error("Error fetching genres:", error);
     res.status(500).json({ message: "Error fetching genres" });
@@ -197,18 +198,19 @@ app.post("/genre-books", async (req, res) => {
     res.status(500).json({ message: "Error fetching books" });
   }
 });
+
 ////////////////////////////////////////////////////
 // Mugdha : Using this API to list books in bookshelves
 // cover, title, author, avg_rating, rating, shelves, review, date_read, date_added
-app.get("/list-products", isAuthenticated, async (req, res) => {
+app.get("/list-books", isAuthenticated, async (req, res) => {
   try {
-        const query = `SELECT 
+        const query = `SELECT distinct
         nbooks.book_id,
         nbooks.name,
         nbooks.author_id,
         nbooks.avg_rating,
         bs.rating,
-        bs.shelf_name,
+        count(bs.shelf_name),
         bs.date_read,
         bs.date_added
       FROM Books AS nbooks
@@ -218,15 +220,18 @@ app.get("/list-products", isAuthenticated, async (req, res) => {
         NATURAL JOIN UserBooks
       ) AS bs
       ON nbooks.book_id = bs.book_id
-      WHERE bs.user_id = $1;`
+      WHERE bs.user_id = $1
+      GROUP BY nbooks.book_id, nbooks.name, nbooks.author_id, nbooks.avg_rating, bs.rating, bs.date_read, bs.date_added;`
       const result = await pool.query(query, [req.session.userId]);
-    const products = result.rows;
-    res.status(200).json({ message: "Books fetched successfully", products });
+    const books = result.rows;
+    console.log(books);
+    res.status(200).json({ message: "Books fetched successfully", books });
   } catch (error) {
     console.error("Error listing books:", error);
     res.status(500).json({ message: "Error listing books" });
   }
 });
+
 
 // Mugdha : get book details
 app.get('/books/:bookId', async (req, res) => {
@@ -303,27 +308,129 @@ app.post("/rate-book", isAuthenticated, async (req, res) => {
 });
 
 // Mugdha : regarding book-details page, Add a shelf
+app.post('/sort-shelves', async (req, res) => {
+  const { shelf_name } = req.body;
+  console.log("Book ID:", shelf_name);
+  try {
+    // Declare query and result outside the if-else block
+    let query;
+    let result;
+
+    if (shelf_name != "All") {
+      query = `with selected_shelf as (SELECT 
+          nbooks.book_id,
+          nbooks.name,
+          nbooks.author_id,
+          nbooks.avg_rating,
+          bs.rating,
+          bs.shelf_name,
+          bs.date_read,
+          bs.date_added
+        FROM Books AS nbooks
+        LEFT OUTER JOIN (
+          SELECT *
+          FROM Bookshelves
+          NATURAL JOIN UserBooks
+        ) AS bs
+        ON nbooks.book_id = bs.book_id
+        WHERE bs.user_id = $1) select * from selected_shelf where shelf_name = $2;`;
+      result = await pool.query(query, [req.session.userId, shelf_name]);
+    } else {
+      query = `SELECT distinct
+        nbooks.book_id,
+        nbooks.name,
+        nbooks.author_id,
+        nbooks.avg_rating,
+        bs.rating,
+        count(bs.shelf_name),
+        bs.date_read,
+        bs.date_added
+      FROM Books AS nbooks
+      LEFT OUTER JOIN (
+        SELECT *
+        FROM Bookshelves
+        NATURAL JOIN UserBooks
+      ) AS bs
+      ON nbooks.book_id = bs.book_id
+      WHERE bs.user_id = $1
+      GROUP BY nbooks.book_id, nbooks.name, nbooks.author_id, nbooks.avg_rating, bs.rating, bs.date_read, bs.date_added;`
+    result = await pool.query(query, [req.session.userId]);
+    }
+
+    console.log(result.rows);
+    // const shelves = result.rows.map(row => row.shelf_name);
+    res.status(200).json({ books: result.rows });
+  } catch (error) {
+    console.error("Error fetching shelves:", error);
+    res.status(500).json({ message: "Error fetching shelves" });
+  }
+});
+
+// Mugdha : regarding book-details page, Add a shelf
+
 app.post('/add-to-shelf', async (req, res) => {
   console.log(req.session);
   const { book_id, shelf_name } = req.body;
   console.log("user_id:", req.session.userId);
   console.log("Book ID:", book_id);
   console.log("Shelf Name:", shelf_name);
-
+  const read = "Read";
+  const wantotreaad = "Want to Read";
+  const currentlyreading = "Currently Reading";
   try {
     // Check if the entry already exists
-    const checkQuery = 'SELECT * FROM bookshelves WHERE user_id = $1 AND book_id = $2 AND shelf_name = $3';
-    const checkResult = await pool.query(checkQuery, [req.session.userId, book_id, shelf_name]);
-
+    const checkQuery = 'SELECT * FROM bookshelves WHERE user_id = $1 AND book_id = $2 AND (shelf_name = $3 or shelf_name = $4 or shelf_name = $5)';
+    const checkResult = await pool.query(checkQuery, [req.session.userId, book_id, read, wantotreaad, currentlyreading]);
+    console.log("Check result:", checkResult.rows);
+    
     if (checkResult.rows.length > 0) {
-      return res.status(400).json({ message: "Entry already exists in the shelf" });
+      
+      if(!(shelf_name == read || shelf_name == wantotreaad || shelf_name == currentlyreading)) {
+        
+        console.log("Updating shelf new entry");
+        const insertQuery = 'INSERT INTO bookshelves (user_id, book_id, shelf_name) VALUES ($1, $2, $3)';
+        await pool.query(insertQuery, [req.session.userId, book_id, shelf_name]);
+        
+        const checkUserBooks = await pool.query('SELECT * FROM userbooks WHERE user_id = $1 AND book_id = $2', [req.session.userId, book_id]);
+        if (checkUserBooks.rows.length == 0) {
+          const insertUserBooksQuery = 'INSERT INTO userbooks (user_id, book_id, rating) VALUES ($1, $2, 3)';
+          await pool.query(insertUserBooksQuery, [req.session.userId, book_id]);
+        }
+
+        res.status(200).json({ message: "Book added to shelf successfully" });
+        return; // Ensure the function exits after sending a response
+
+      } else {
+        console.log("Updating shelf");
+        const updateQuery = 'UPDATE bookshelves SET shelf_name = $1 WHERE user_id = $2 AND book_id = $3 AND shelf_name = $4';
+        
+        const checkUserBooks = await pool.query('SELECT * FROM userbooks WHERE user_id = $1 AND book_id = $2', [req.session.userId, book_id]);
+        if (checkUserBooks.rows.length == 0) {
+          const insertUserBooksQuery = 'INSERT INTO userbooks (user_id, book_id, rating) VALUES ($1, $2, 3)';
+          await pool.query(insertUserBooksQuery, [req.session.userId, book_id]);
+        }
+
+        await pool.query(updateQuery, [shelf_name, req.session.userId, book_id, checkResult.rows[0].shelf_name]);
+        res.status(200).json({ message: "Shelf updated successfully" });
+        return; // Ensure the function exits after sending a response
+      }
     }
-
     // Insert the new entry
-    const insertQuery = 'INSERT INTO bookshelves (user_id, book_id, shelf_name) VALUES ($1, $2, $3)';
-    await pool.query(insertQuery, [req.session.userId, book_id, shelf_name]);
-
-    res.status(200).json({ message: "Book added to shelf successfully" });
+    if (shelf_name == read || shelf_name == wantotreaad || shelf_name == currentlyreading) {
+      console.log("Inserting shelf first entry");
+        const insertQuery = 'INSERT INTO bookshelves (user_id, book_id, shelf_name) VALUES ($1, $2, $3)';
+        const insertUserBooksQuery = 'INSERT INTO userbooks (user_id, book_id, rating) VALUES ($1, $2, 3)';
+        await pool.query(insertUserBooksQuery, [req.session.userId, book_id]);
+        console.log("Inserting into shelf");
+        await pool.query(insertQuery, [req.session.userId, book_id, shelf_name]);
+        res.status(200).json({ message: "Book added to shelf successfully" });
+        return; // Ensure the function exits after sending a response
+    } else {
+      res.status(400).json({ message: "Invalid shelf name" });
+      return; // Ensure the function exits after sending a response
+    }
+   
+    
   } catch (error) {
     console.error("Error adding to shelf:", error);
     res.status(500).json({ message: "Error adding to shelf" });
@@ -356,6 +463,7 @@ app.post("/create-shelf-and-add-book", isAuthenticated, async (req, res) => {
     res.status(500).json({ message: "Error creating shelf" });
   }
 });
+
 
 // API to create a new shelf in books page
 app.post("/create-shelf", isAuthenticated, async (req, res) => {
