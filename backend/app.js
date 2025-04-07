@@ -494,6 +494,29 @@ app.get("/recommendations" , isAuthenticated, async (req, res) => {
   }
 });
 
+app.get("/search", async (req, res) => {
+  const { q = "" } = req.query;
+  try {
+    const searchQuery = `
+      SELECT book_id, name, image_link, avg_rating
+      FROM books
+      WHERE name ILIKE $1
+      LIMIT 50;
+    `;
+
+    const values = [`%${q}%`];
+    const result = await pool.query(searchQuery, values);
+
+    res.status(200).json({
+      message: "Books fetched successfully",
+      books: result.rows,
+    });
+  } catch (error) {
+    console.error("Error searching books:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 ////////////////////////////////////////////////////
 // Start the server
 app.listen(port, () => {

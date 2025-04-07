@@ -49,28 +49,28 @@ const Book = () => {
   const handleShelfChange = async () => {
     if (!selectedShelf) return;
 
-    await fetch(`${apiUrl}/add-to-shelf`, {
+    const res = await fetch(`${apiUrl}/add-to-shelf`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({ book_id: bookId, shelf_name: selectedShelf }),
     });
 
-    setShelves([...shelves, selectedShelf]);
+    setShelves([...shelves, { shelf_name: selectedShelf }]);
     setSelectedShelf("");
   };
 
   const handleNewShelf = async () => {
     if (!newShelf) return;
 
-    await fetch(`${apiUrl}/create-shelf-and-add-book`, {
+    const res = await fetch(`${apiUrl}/create-shelf-and-add-book`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({ book_id : bookId, shelf_name: newShelf }),
     });
 
-    setShelves([...shelves, newShelf]);
+    setShelves([...shelves, { shelf_name: newShelf }]);
     setNewShelf("");
   };
 
@@ -116,6 +116,7 @@ return (
                 { shelves.length > 0 ? (
                 <ul>
                     {shelves.map((shelf, idx) => (
+                      console.log(shelf),
                     <li key={idx}>{shelf.shelf_name}</li>
                     ))}
                 </ul>

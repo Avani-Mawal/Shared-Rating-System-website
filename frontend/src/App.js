@@ -8,6 +8,8 @@ import Recommendations from "./pages/Recommendations";
 import Genres from "./pages/Genres";
 import GenreDetail from "./pages/GenreDetail";
 import Book from "./pages/Book-details";
+import search from "./pages/search";
+import Search from "./pages/search";
 
 function App() {
   return (
@@ -20,6 +22,7 @@ function App() {
       <Route path="/genres" element={<Genres />} />
       <Route path="/genre/:genreName" element={<GenreDetail />} />
       <Route path="/books/:bookId" element={<Book />} />
+      <Route path="/search" element={<Search />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

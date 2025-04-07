@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { apiUrl } from "../config/config";
 import Navbar from "../components/Navbar";
+import Modal from 'react-modal';
 import "../css/Genres.css";
 
 
@@ -12,6 +13,18 @@ const Genres = () => {
   const [genreBooks, setGenreBooks] = useState({});
   const [allGenres, setAllGenres] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const openModal = () => {
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+  };
+
+
 
   const getAllGenres = async () => {
     try {
@@ -126,7 +139,9 @@ const Genres = () => {
                 <h2>{genre.toUpperCase()}</h2>
                 <div className="genre-book-row">
                   {books.map((book, idx) => (
-                    <a href = {`/books/${book.book_id}`}> <img key={idx} src={book.image_link} alt={book.name} /></a>
+                    <a href = {`/books/${book.book_id}`}> <img key={idx} src={book.image_link} alt={book.name}
+                    onError={(e) => e.target.src = './Image-not-found.png'} 
+                    /></a>
                   ))}
                 </div>
                 <a href={`/genre/${genre.toLowerCase()}`} className="more-genre-link"> More {genre.toLowerCase()}...</a>
@@ -135,32 +150,29 @@ const Genres = () => {
           </div>
 
           <div className="genre-right">
-            <div className="favorite-genres">
-              <h3>MY FAVORITE GENRES <span className="edit-link">edit</span></h3>
-                <div className="genre-list">
-                    {genreToShow.length > 0 ? (
-                    genreToShow.map((genre) => <p key={genre}>{genre}</p>)
-                    ) : (
-                    <p>No genres selected</p>
-                    )}
-                </div>
-            </div>
             <div className="browse-genres">
               <h3>BROWSE</h3>
               <div className="genre-list">
-                {["Art", "Biography", "Business", "Chick Lit", "Children's", "Christian",
-                  "Classics", "Comics", "Contemporary", "Cookbooks", "Crime", "Ebooks",
-                  "Fantasy", "Fiction", "Gay and Lesbian", "Graphic Novels", "Historical Fiction",
-                  "History", "Horror", "Humor and Comedy", "Manga", "Memoir", "Music", "Mystery",
-                  "Nonfiction", "Paranormal", "Philosophy", "Poetry", "Psychology", "Religion",
-                  "Romance", "Science", "Science Fiction", "Self Help", "Spirituality", "Sports",
-                  "Thriller", "Travel", "Young Adult"].map((g) => <a href= {`/genre/${g.toLowerCase()}`} key={g}>{g}</a>)}
+                {allGenres.map((g) => <a href= {`/genre/${g.toLowerCase()}`} key={g}>{g}</a>)}
               </div>
-              <a className="more-genres-link" href="#">More genres...</a>
+              <a className="more-genres-link" href="#" onClick={openModal}>More genres...</a>
             </div>
           </div>
         </div>
       </div>
+      <Modal
+        isOpen={isModalOpen}
+        onRequestClose={closeModal}
+        contentLabel="All Genres"
+      >
+        <h2>All Genres</h2>
+        <button onClick={closeModal}>Close</button>
+        <div className="all-genres-list">
+          {Object.keys(allGenres).map((g) => (
+            <a href= {`/genre/${g.toLowerCase()}`} key={g}>{g}</a>
+          ))}
+        </div>
+      </Modal>
     </div>
   );
 };

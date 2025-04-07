@@ -92,6 +92,7 @@ body{
   
   .dropdown-menu {
     position: absolute;
+    width: auto;
     top: 100%;
     left: 0;
     background-color: white;
@@ -101,7 +102,9 @@ body{
   }
   
   .dropdown-menu div {
-    padding: 10px 20px;
+    text-align: left;
+    margin: 10px;
+    padding: 15px 20px;
     cursor: pointer;
     white-space: nowrap;
   }

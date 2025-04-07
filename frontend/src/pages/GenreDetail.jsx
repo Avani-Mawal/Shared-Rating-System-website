@@ -59,11 +59,13 @@ const GenreDetail = () => {
         <div className="genre-books-grid">
           { books ? (
             books.map((book, index) => (
+              <a href = {`/books/${book.book_id}`} key={index} className="book-card">
               <div key={index} className="book-card">
                 <img src={book.image_link} alt={book.title} />
                 <h2>{book.name}</h2>
                 <p>{book.publ_date}</p>
               </div>
+              </a>
             ))
           ) : (
             <p>No books found for this genre.</p>

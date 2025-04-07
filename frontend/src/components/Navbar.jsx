@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { apiUrl } from "../config/config";
+import SearchBar from "../components/SearchBar";
 import "../css/Navbar.css";
 
 const Navbar = () => {
@@ -44,6 +45,7 @@ const Navbar = () => {
       });
       if (response.status === 200) {
         setLoggedIn(false);
+        navigate("/");
       } else {
         alert("Logout failed");
       }
@@ -82,6 +84,10 @@ const Navbar = () => {
         </div>
 
         <a href="/community">Community</a>
+      </div>
+
+      <div className="navbar-search">
+        <SearchBar onSearchResults={() => {}} />
       </div>
 
       <div className="navbar-actions">

@@ -40,6 +40,7 @@ const Dashboard = () => {
       <Navbar />
       <h1>Hi {username}!</h1>
       <div>Welcome to the BookReads!</div>
+      <button onClick={() => navigate("/search")}>Search Books</button>
     </div>
   );
 };
