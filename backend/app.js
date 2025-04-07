@@ -56,47 +56,76 @@ function isAuthenticated(req, res, next) {
 // return JSON object with the following fields: {username, email, password}
 // use correct status codes and messages mentioned in the lab document
 app.post('/signup', async (req, res) => {
-  const { first_name, last_name, username, email, password, dob } = req.body;
+  const { username, email, password, firstName, lastName, genres, dob } = req.body;
   try {
-    // Hash the password
     console.log(req.body);
-    const hashedPassword = await bcrypt.hash(password, 10);
-    // Insert into the users table
-    console.log("S");
+
+    // Check if email is already registered
+
     const emailCheck = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     if (emailCheck.rows.length > 0) {
       return res.status(400).json({ message: "Email already registered." });
     }
-    console.log("S");
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Generate new user_id
     const userIDrow = await pool.query('SELECT COUNT(*) FROM users');
-    console.log("S");
-    const userID = parseInt(userIDrow.rows[0].count,10) + 1;
-    const query = "INSERT INTO users (user_id, username, first_name, last_name, email, password_hash, date_joined, dob) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, $7)";
-    // const query = "INSERT INTO users (user_id, username, first_name, last_name, email, password_hash, date_joined, dob) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6)";
-    await pool.query(query, [userID, username, first_name, last_name, email, hashedPassword, dob]);
-    console.log("S");
-    const q2 = "SELECT user_id FROM users WHERE email = $1";
-    const result = await pool.query(q2, [email]);
-    console.log("S");
-    req.session.userId = result.rows[0].user_id;
+    const userID = parseInt(userIDrow.rows[0].count, 10) + 1;
+
+    // Insert user into the database
+    const insertQuery = `
+      INSERT INTO users (user_id, username, email, password_hash, first_name, last_name, genres, dob)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `;
+
+    await pool.query(insertQuery, [
+      userID,
+      username,
+      email,
+      hashedPassword,
+      firstName,
+      lastName,
+      JSON.stringify(genres), // assuming genres is an array
+      dob
+    ]);
+
+    // Set session
+    req.session.userId = userID;
+
+
     res.status(200).json({ message: "User Registered Successfully" });
+
   } catch (error) {
-    let message = "Error inserting user.";
-    console.error(message, error);
+    console.error("Error inserting user:", error);
     res.status(500).json({ message: "Error signing up" });
   }
 });
 
-/// Mugdha : for genres
-app.post('/select-genres', async (req, res) => {
-  const { userId, genres } = req.body;
+app.get("/all-genres", async (req, res) => {
   try {
-    const query = "UPDATE users SET genres = $1 WHERE user_id = $2";
-    await pool.query(query, [genres, userId]);
-    res.status(200).json({ message: "Genres updated successfully" });
+    const result = await pool.query('SELECT * FROM genres');
+    const genres = result.rows;
+    res.status(200).json({ message: "Genres fetched successfully", genres });
   } catch (error) {
-    console.error("Error updating genres", error);
-    res.status(500).json({ message: "Error updating genres" });
+    console.error("Error fetching genres:", error);
+    res.status(500).json({ message: "Error fetching genres" });
+  }
+}
+);
+
+app.get("/user-genres", async (req, res) => {
+  try {
+    const result = await pool.query('SELECT genres FROM users where user_id = $1', [req.session.userId]);
+    const genresString = result.rows[0].genres;
+    console.log(genresString);
+    const genres = JSON.parse(genresString);
+
+    res.status(200).json({ message: "Genres fetched successfully", genres });
+  } catch (error) {
+    console.error("Error fetching genres:", error);
+    res.status(500).json({ message: "Error fetching genres" });
   }
 });
 
@@ -150,18 +179,36 @@ app.post("/logout", (req, res) => {
   });
 });
 
+
+app.post("/genre-books", async (req, res) => {
+  const { genres } = req.body;
+  try {
+    let books = {};
+    for (let i = 0; i < genres.length; i++) {
+      const query = "SELECT * FROM books WHERE genre LIKE $1 ORDER BY publ_date DESC";
+      const result = await pool.query(query, [`%${genres[i]}%`]);
+      if (result.rows.length !== 0) {
+        books[genres[i]] = result.rows;
+      }
+    }
+    res.status(200).json({ message: "Books fetched successfully", books });
+  } catch (error) {
+    console.error("Error fetching books:", error);
+    res.status(500).json({ message: "Error fetching books" });
+  }
+});
 ////////////////////////////////////////////////////
 // Mugdha : Using this API to list books in bookshelves
 // cover, title, author, avg_rating, rating, shelves, review, date_read, date_added
-app.get("/list-books", isAuthenticated, async (req, res) => {
+app.get("/list-products", isAuthenticated, async (req, res) => {
   try {
-        const query = `SELECT distinct
+        const query = `SELECT 
         nbooks.book_id,
         nbooks.name,
         nbooks.author_id,
         nbooks.avg_rating,
         bs.rating,
-        count(bs.shelf_name),
+        bs.shelf_name,
         bs.date_read,
         bs.date_added
       FROM Books AS nbooks
@@ -171,11 +218,10 @@ app.get("/list-books", isAuthenticated, async (req, res) => {
         NATURAL JOIN UserBooks
       ) AS bs
       ON nbooks.book_id = bs.book_id
-      WHERE bs.user_id = $1
-      GROUP BY nbooks.book_id, nbooks.name, nbooks.author_id, nbooks.avg_rating, bs.rating, bs.date_read, bs.date_added;`
+      WHERE bs.user_id = $1;`
       const result = await pool.query(query, [req.session.userId]);
-    const books = result.rows;
-    res.status(200).json({ message: "Books fetched successfully", books });
+    const products = result.rows;
+    res.status(200).json({ message: "Books fetched successfully", products });
   } catch (error) {
     console.error("Error listing books:", error);
     res.status(500).json({ message: "Error listing books" });
@@ -209,20 +255,20 @@ app.get('/books/:bookId', async (req, res) => {
 
 // API to rate a book
 app.post("/rate-book", isAuthenticated, async (req, res) => {
-  const { book_id, rating } = req.body;
+  const { bookId, rating } = req.body;
   const userId = req.session.userId;
 
   try {
     // Check if the book exists
     const bookQuery = "SELECT * FROM books WHERE book_id = $1";
-    const bookResult = await pool.query(bookQuery, [book_id]);
+    const bookResult = await pool.query(bookQuery, [bookId]);
     if (bookResult.rows.length === 0) {
       return res.status(400).json({ message: "Invalid book ID" });
     }
 
     // Check if the user has already rated the book
     const ratingQuery = "SELECT * FROM reviews WHERE user_id = $1 AND book_id = $2";
-    const ratingResult = await pool.query(ratingQuery, [userId, book_id]);
+    const ratingResult = await pool.query(ratingQuery, [userId, bookId]);
 
     if (ratingResult.rows.length === 0) {
       // Insert new rating
@@ -230,11 +276,11 @@ app.post("/rate-book", isAuthenticated, async (req, res) => {
       const reviewIdResult = await pool.query(reviewIdQuery);
       const reviewId = reviewIdResult.rows[0].next_id;
       const insertQuery = "INSERT INTO reviews (review_id, user_id, book_id, rating) VALUES ($1, $2, $3, $4)";
-      await pool.query(insertQuery, [reviewId, userId, book_id, rating]);
+      await pool.query(insertQuery, [reviewId, userId, bookId, rating]);
     } else {
       // Update existing rating
       const updateQuery = "UPDATE reviews SET rating = $1 WHERE user_id = $2 AND book_id = $3";
-      await pool.query(updateQuery, [rating, userId, book_id]);
+      await pool.query(updateQuery, [rating, userId, bookId]);
     }
 
     // Update the average rating of the book
@@ -247,7 +293,7 @@ app.post("/rate-book", isAuthenticated, async (req, res) => {
       )
       WHERE book_id = $1
     `;
-    await pool.query(avgRatingQuery, [book_id]);
+    await pool.query(avgRatingQuery, [bookId]);
 
     res.status(200).json({ message: "Book rated successfully" });
   } catch (error) {
@@ -257,103 +303,27 @@ app.post("/rate-book", isAuthenticated, async (req, res) => {
 });
 
 // Mugdha : regarding book-details page, Add a shelf
-app.post('/sort-shelves', async (req, res) => {
-  const { shelf_name } = req.body;
-  console.log("Book ID:", shelf_name);
-  try {
-    // Declare query and result outside the if-else block
-    let query;
-    let result;
-
-    if (shelf_name != "All") {
-      query = `with selected_shelf as (SELECT 
-          nbooks.book_id,
-          nbooks.name,
-          nbooks.author_id,
-          nbooks.avg_rating,
-          bs.rating,
-          bs.shelf_name,
-          bs.date_read,
-          bs.date_added
-        FROM Books AS nbooks
-        LEFT OUTER JOIN (
-          SELECT *
-          FROM Bookshelves
-          NATURAL JOIN UserBooks
-        ) AS bs
-        ON nbooks.book_id = bs.book_id
-        WHERE bs.user_id = $1) select * from selected_shelf where shelf_name = $2;`;
-      result = await pool.query(query, [req.session.userId, shelf_name]);
-    } else {
-      query = `SELECT distinct
-        nbooks.book_id,
-        nbooks.name,
-        nbooks.author_id,
-        nbooks.avg_rating,
-        bs.rating,
-        count(bs.shelf_name),
-        bs.date_read,
-        bs.date_added
-      FROM Books AS nbooks
-      LEFT OUTER JOIN (
-        SELECT *
-        FROM Bookshelves
-        NATURAL JOIN UserBooks
-      ) AS bs
-      ON nbooks.book_id = bs.book_id
-      WHERE bs.user_id = $1
-      GROUP BY nbooks.book_id, nbooks.name, nbooks.author_id, nbooks.avg_rating, bs.rating, bs.date_read, bs.date_added;`
-    result = await pool.query(query, [req.session.userId]);
-    }
-
-    console.log(result.rows);
-    // const shelves = result.rows.map(row => row.shelf_name);
-    res.status(200).json({ books: result.rows });
-  } catch (error) {
-    console.error("Error fetching shelves:", error);
-    res.status(500).json({ message: "Error fetching shelves" });
-  }
-});
-
 app.post('/add-to-shelf', async (req, res) => {
   console.log(req.session);
   const { book_id, shelf_name } = req.body;
   console.log("user_id:", req.session.userId);
   console.log("Book ID:", book_id);
   console.log("Shelf Name:", shelf_name);
-  const all = "All";
-  const wantotreaad = "Want to Read";
-  const currentlyreading = "Currently Reading";
+
   try {
     // Check if the entry already exists
-    const checkQuery = 'SELECT * FROM bookshelves WHERE user_id = $1 AND book_id = $2 AND (shelf_name = $3 or shelf_name = $4 or shelf_name = $5)';
-    const checkResult = await pool.query(checkQuery, [req.session.userId, book_id, all, wantotreaad, currentlyreading]);
+    const checkQuery = 'SELECT * FROM bookshelves WHERE user_id = $1 AND book_id = $2 AND shelf_name = $3';
+    const checkResult = await pool.query(checkQuery, [req.session.userId, book_id, shelf_name]);
 
     if (checkResult.rows.length > 0) {
-      if(!(shelf_name == all || shelf_name == wantotreaad || shelf_name == currentlyreading)) {
-        const insertQuery = 'INSERT INTO bookshelves (user_id, book_id, shelf_name) VALUES ($1, $2, $3)';
-        await pool.query(insertQuery, [req.session.userId, book_id, shelf_name]);
-        res.status(200).json({ message: "Book added to shelf successfully" });
-        return; // Ensure the function exits after sending a response
-      } else {
-        const updateQuery = 'UPDATE bookshelves SET shelf_name = $1 WHERE user_id = $2 AND book_id = $3 AND shelf_name = $4';
-        await pool.query(updateQuery, [shelf_name, req.session.userId, book_id, checkResult.rows[0].shelf_name]);
-        res.status(200).json({ message: "Shelf updated successfully" });
-        return; // Ensure the function exits after sending a response
-      }
+      return res.status(400).json({ message: "Entry already exists in the shelf" });
     }
+
     // Insert the new entry
-    if (shelf_name == all || shelf_name == wantotreaad || shelf_name == currentlyreading) {
-        const insertQuery = 'INSERT INTO bookshelves (user_id, book_id, shelf_name) VALUES ($1, $2, $3)';
-        await pool.query(insertQuery, [req.session.userId, book_id, shelf_name]);
-        res.status(200).json({ message: "Book added to shelf successfully" });
-        return; // Ensure the function exits after sending a response
-    } else {
-      res.status(400).json({ message: "Invalid shelf name" });
-      return; // Ensure the function exits after sending a response
-    }
-   
-    
+    const insertQuery = 'INSERT INTO bookshelves (user_id, book_id, shelf_name) VALUES ($1, $2, $3)';
+    await pool.query(insertQuery, [req.session.userId, book_id, shelf_name]);
+
+    res.status(200).json({ message: "Book added to shelf successfully" });
   } catch (error) {
     console.error("Error adding to shelf:", error);
     res.status(500).json({ message: "Error adding to shelf" });
@@ -406,10 +376,10 @@ app.post("/create-shelf", isAuthenticated, async (req, res) => {
     if (checkResult.rows.length > 0) {
       return res.status(400).json({ message: "Shelf already exists" });
     }
-    // const bookId = 3;
+
     // Insert the new shelf
-    const insertQuery = "INSERT INTO bookshelves (user_id, shelf_name) VALUES ($1, $2)";
-    await pool.query(insertQuery, [user_id, shelf_name]);
+    const insertQuery = "INSERT INTO bookshelves (user_id, book_id, shelf_name) VALUES ($1, $2, $3)";
+    await pool.query(insertQuery, [user_id, bookId, shelf_name]);
 
     res.status(200).json({ message: "Shelf created successfully" });
   } catch (error) {
@@ -418,91 +388,19 @@ app.post("/create-shelf", isAuthenticated, async (req, res) => {
   }
 });
 
-
-// TODO: Implement display-cart API which will returns the products in the cart
-app.get("/display-cart", isAuthenticated, async (req, res) => {
-  const user_id = req.session.userId;
+app.post("/genre-description", async (req, res) => {
+  const { genre } = req.query;
   try {
-    const result = await pool.query('SELECT * FROM Cart, Products WHERE user_id = $1 AND item_id = product_id ORDER BY item_id', [user_id]);
-    const sum = await pool.query('SELECT SUM(price*quantity) FROM Cart, Products WHERE user_id = $1 AND item_id = product_id', [user_id]);
+    const query = "SELECT description FROM genres WHERE genre = $1";
+    const result = await pool.query(query, [genre]);
     if (result.rows.length === 0) {
-      return res.status(400).json({ message: "No items in cart.", cart: [], totalPrice: 0});
+      return res.status(400).json({ message: "Genre not found" });
     }
-    const cart = result.rows;
-    const totalPrice = sum.rows[0].sum;
-    res.status(200).json({ message: "Cart fetched successfully", cart, totalPrice});
-
+    const description = result.rows[0].description;
+    res.status(200).json({ message: "Description fetched successfully", description });
   } catch (error) {
-    console.error("Error displaying cart:", error);
-    res.status(500).json({ message: "Error fetching cart" });
-  }
-});
-
-// TODO: Implement remove-from-cart API which will remove the product from the cart
-app.post("/remove-from-cart", isAuthenticated, async (req, res) => {
-  const { productId } = req.body;
-  try {
-    const product_id = parseInt(productId, 10);
-    const user_id = req.session.userId;
-    const check_query = "SELECT * FROM cart WHERE user_id = $1 AND item_id = $2";
-    const check_result = await pool.query(check_query, [user_id, product_id]);
-
-    if (check_result.rows.length === 0) {
-      return res.status(400).json({message: "Item not present in your cart."});
-    }
-
-    const query = "DELETE FROM cart WHERE user_id = $1 AND item_id = $2";
-    await pool.query(query, [user_id, product_id]);
-    res.status(200).json({message: "Item removed from your cart successfully."});
-
-  } catch (error) {
-    console.error("Error removing from cart:", error);
-    res.status(500).json({ message: "Error removing item from cart" });
-  }
-});
-// TODO: Implement update-cart API which will update the quantity of the product in the cart
-app.post("/update-cart", isAuthenticated, async (req, res) => {
-  const { productId, quantity } = req.body;
-  try {
-    const product_id = parseInt(productId, 10);
-    const query1 = "SELECT * FROM products WHERE product_id = $1";
-    const result = await pool.query(query1, [product_id]);
-    const product = result.rows[0];
-    if (result.rows.length === 0) {
-      return res.status(500).json({ message: "Error Updating Cart" });
-    }
-
-    const q = parseInt(quantity, 10);
-    const stock_quantity = parseInt(result.rows[0].stock_quantity, 10);
-
-    const user_id = req.session.userId;
-    const query2 = "SELECT * FROM cart WHERE user_id = $1 AND item_id = $2";
-    const result2 = await pool.query(query2, [user_id, product_id]);
-    const cart_quantity = result2.rows.length === 0 ? 0 : parseInt(result2.rows[0].quantity,10);
-
-
-    if (stock_quantity < q + cart_quantity) {
-      return res.status(400).json({ message: "Requested quantity exceeds available stock" });
-    }
-
-    if (q + cart_quantity <= 0) {
-      const query = "DELETE FROM cart WHERE user_id = $1 AND item_id = $2";
-      await pool.query(query, [user_id, product_id]);
-      return res.status(200).json( { message: ("Successfully added $1 of $2 to your cart.", [q, product.name]) });
-    }
-
-
-    if (result2.rows.length === 0) {
-      const query3 = "INSERT INTO cart (user_id, item_id, quantity) VALUES ($1, $2, $3)";
-      await pool.query(query3, [user_id, product_id, q ]);
-    } else {
-      const query3 = "UPDATE cart SET quantity = $1 WHERE user_id = $2 AND item_id = $3";
-      await pool.query(query3, [q + cart_quantity, user_id, product_id]);
-    }
-    return res.status(200).json( { message: ("Successfully added $1 of $2 to your cart.", [q, product.name]) });
-  } catch (error) {
-    console.error("Error adding to cart:", error);
-    res.status(500).json({message : "Error updating cart."});
+    console.error("Error fetching description:", error);
+    res.status(500).json({ message: "Error fetching description" });
   }
 });
 
@@ -581,6 +479,42 @@ app.get("/order-confirmation", isAuthenticated, async (req, res) => {
     res.status(500).json({ message: "Error fetching order confirmation" });
   }
 
+});
+
+app.get("/recommendations" , isAuthenticated, async (req, res) => {
+  const user_id = req.session.userId;
+  try {
+    const query = "SELECT * FROM recommendations WHERE user_id = $1";
+    const result = await pool.query(query, [user_id]);
+    const recommendations = result.rows;
+    res.status(200).json({ message: "Recommendations fetched successfully", recommendations });
+  } catch (error) {
+    console.error("Error fetching recommendations:", error);
+    res.status(500).json({ message: "Error fetching recommendations" });
+  }
+});
+
+app.get("/search", async (req, res) => {
+  const { q = "" } = req.query;
+  try {
+    const searchQuery = `
+      SELECT book_id, name, image_link, avg_rating
+      FROM books
+      WHERE name ILIKE $1
+      LIMIT 50;
+    `;
+
+    const values = [`%${q}%`];
+    const result = await pool.query(searchQuery, values);
+
+    res.status(200).json({
+      message: "Books fetched successfully",
+      books: result.rows,
+    });
+  } catch (error) {
+    console.error("Error searching books:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
 });
 
 ////////////////////////////////////////////////////
