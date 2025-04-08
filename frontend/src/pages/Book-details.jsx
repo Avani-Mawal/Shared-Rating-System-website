@@ -16,7 +16,7 @@ const Book = () => {
   const [selectedShelf, setSelectedShelf] = useState("");
   const [genres, setGenres] = useState([]);
   const [newShelf, setNewShelf] = useState("");
-
+  const [Reviews, setReviews] = useState([]);
   // Fetch book info
   useEffect(() => {
     const fetchBook = async () => {
@@ -37,8 +37,30 @@ const Book = () => {
     };
 
     fetchBook();
-
+    fetchReviews(bookId);
   }, [bookId, navigate]);
+
+  const ReadMore = ({ text, maxLength }) => {
+    const [expanded, setExpanded] = useState(false);
+
+    if (text.length <= maxLength) return <span>{text}</span>;
+
+    return (
+        <span>
+            {expanded ? text : `${text.slice(0, maxLength)}... `}
+            <a
+                href="#"
+                onClick={(e) => {
+                    e.preventDefault();
+                    setExpanded(!expanded);
+                }}
+                style={{ color: "blue", cursor: "pointer", textDecoration: "underline" }}
+            >
+                {expanded ? "Show less" : "Show more"}
+            </a>
+        </span>
+    );
+};
 
   const handleRatingChange = async (e) => {
     const newRating = parseInt(e.target.value);
@@ -81,12 +103,37 @@ const Book = () => {
     setNewShelf("");
   };
 
+  const fetchReviews = async (bookId) => {
+    try {
+      const res = await fetch(`${apiUrl}/get-reviews`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ book_id: bookId }),
+      });
+      const data = await res.json();
+      setReviews(data.reviews);
+      if (res.status === 200) {
+        console.log(data.reviews);
+        return data.reviews;
+      } else {
+        console.error("Error fetching reviews:", data.message);
+        return [];
+      }
+    } catch (error) {
+      console.error("Error fetching reviews:", error);
+      return [];
+    }
+  };
   if (!book) return <div>Loading book details...</div>;
 
-return (
+  return (
     <>
         <Navbar />
+
         <div className="container">
+            {/* Book Image and Actions */}
+            <div className="book-info">
             <div className="image-section">
                 <img src={book.image_link} alt={book.name} className="cover" />
                 <button className="button">Read</button>
@@ -102,9 +149,9 @@ return (
                         ))}
                     </select>
                 </div>
-                
             </div>
 
+            {/* Book Details */}
             <div className="details-section">
                 <h2>{book.name}</h2>
                 <a href={`/authors/${author.author_id}`}><h4>{author.name}</h4></a>
@@ -124,16 +171,14 @@ return (
                 </div>
 
                 <h3>📚 Your Shelves</h3>
-               
-                { shelves.length > 0 ? (
-                <ul>
-                    {shelves.map((shelf, idx) => (
-                      console.log(shelf),
-                    <li key={idx}>{shelf.shelf_name}</li>
-                    ))}
-                </ul>
+                {shelves.length > 0 ? (
+                    <ul>
+                        {shelves.map((shelf, idx) => (
+                            <li key={idx}>{shelf.shelf_name}</li>
+                        ))}
+                    </ul>
                 ) : (
-                <p>No shelves found.</p>
+                    <p>No shelves found.</p>
                 )}
 
                 <div style={{ marginTop: "10px" }}>
@@ -163,9 +208,43 @@ return (
                     <button onClick={handleNewShelf}>Create Shelf</button>
                 </div>
             </div>
+            </div>
+            {/* Reviews Section (Moved Below) */}
+            <div className="review-section" style={{ marginTop: "40px" }}>
+                <h3>📖 Reviews</h3>
+                {Reviews && Reviews.length > 0 ? (
+                    Reviews.map((review, index) => (
+                        <div key={index} className="review-card" style={{ borderBottom: "1px solid #ddd", padding: "15px 0" }}>
+                            <div style={{ display: "flex", alignItems: "center" }}>
+                                <div style={{ fontWeight: "bold", marginRight: "10px" }}>{review.username}</div>
+                                <div style={{ color: "#888", fontSize: "0.9em" }}>
+                                    {new Date(review.review_date).toLocaleDateString()}
+                                </div>
+                            </div>
+
+                            <div style={{ marginTop: "5px", color: "orange" }}>
+                                {"★".repeat(Math.floor(review.rating)) + "☆".repeat(5 - Math.floor(review.rating))}
+                            </div>
+
+                            <div style={{ marginTop: "10px", whiteSpace: "pre-wrap" }}>
+                                {review.review_text.length > 300 ? (
+                                    // <ReadMore text={review.review_text} maxLength={300} />
+                                    <></>
+                                ) : (
+                                    <>{review.review_text}</>
+                                )}
+                            </div>
+                        </div>
+                    ))
+                ) : (
+                    <p>No reviews yet for this book.</p>
+                )}
+            </div>
         </div>
     </>
 );
+
+
 };
 
 export default Book;

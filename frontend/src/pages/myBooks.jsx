@@ -15,7 +15,9 @@ const Books = () => {
   const [customShelves, setCustomShelves] = useState([]); // optional for future display
   const [currentShelf, setCurrentShelf] = useState("All");
   const [showPopup, setShowPopup] = useState(false);
-
+  const [AllBooks, setAllBooks] = useState([]);
+  // const [DateRead, setDateRead] = useState("");
+  const [showDateInput, setShowDateInput] = useState({});
   useEffect(() => {
     const checkStatus = async () => {
       try {
@@ -28,7 +30,8 @@ const Books = () => {
         } else {
           console.log("User is logged in");
           fetchBooks();
-          // fetchShelves();
+          fetchAllBooks();
+          fetchShelves();
         }
       } catch (error) {
         console.error("Error checking login status:", error);
@@ -53,8 +56,9 @@ const Books = () => {
 
       if (response.ok) {
         // Optional: Add to a list of custom shelves
-        setCustomShelves([...customShelves, { name: newShelfName }]);
-
+        setCustomShelves([...customShelves, { shelf_name: newShelfName }]);
+        console.log("Shelf added successfully");
+        console.log("shelves", customShelves);
         // Add the new shelf to the shelves state
         setShelves([...shelves, { name: newShelfName }]);
 
@@ -70,6 +74,33 @@ const Books = () => {
     // Rese
     setNewShelfName("");
     setShowShelfInput(false);
+  };
+
+  const handleDateAdded = async (bookId, date) => {
+    try { 
+      const response = await fetch(`${apiUrl}/add-date-read`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ book_id: bookId, date_read: date }),
+      });
+      if (response.ok) {
+        console.log(showDateInput);
+        // const data = await response.json();
+        console.log("Date added successfully");
+        setBooks(prevBooks =>
+          prevBooks.map(book =>
+            book.book_id === bookId ? { ...book, date_read: date } : book
+          )
+        );
+      } else {
+        console.error("Failed to sort shelves");
+      }
+    } catch (error) {
+      console.error("Error sorting shelves:", error);
+    }
   };
 
   const handleShelfSort = async (shelfName) => {
@@ -97,12 +128,30 @@ const Books = () => {
 
     const AddBooktoShelf = async (bookId) => {
   
-      await fetch(`${apiUrl}/add-to-shelf`, {
+      const response = await fetch(`${apiUrl}/add-to-shelf`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ book_id: bookId, shelf_name: currentShelf }),
       });
+      if(response.ok){
+        alert("Book added to shelf successfully!");
+        setAllBooks((prevBooks) =>
+          prevBooks.map((book) =>
+            book.book_id === bookId
+              ? { ...book, shelf_name: currentShelf }
+              : book
+          )
+        );
+        setTotalBooks((prevBooks) =>
+          prevBooks.map((book) =>
+            book.book_id === bookId
+              ? { ...book, shelf_name: currentShelf }
+              : book
+          )
+        );
+        // setShowPopup(false);
+      }
 
     };
   
@@ -122,19 +171,37 @@ const Books = () => {
     }
   };
 
-  // const fetchShelves = async () => {
-  //   try {
-  //     const res = await fetch(`${apiUrl}/user/shelves`, {
-  //       method: "GET",
-  //       credentials: "include",
-  //     });
-  //     const data = await res.json();
-  //     setShelves(data.shelves || []);
-  //     setTotalBooks(data.total || 0);
-  //   } catch (error) {
-  //     console.error("Error fetching shelves:", error);
-  //   }
-  // };
+  const fetchAllBooks = async () => {
+    try {
+      const response = await fetch(`${apiUrl}/list-all-books`, {
+        method: "GET",
+        credentials: "include",
+      });
+      const data = await response.json();
+      console.log("Fetched books:", data.books);
+      setAllBooks(data.books);
+      console.log(data.books);
+    } catch (error) {
+      console.error("Error fetching book:", error);
+    }
+  };
+
+
+  const fetchShelves = async () => {
+    try {
+      const res = await fetch(`${apiUrl}/shelves`, {
+        method: "GET",
+        credentials: "include",
+      });
+      const data = await res.json();
+      setShelves(data.shelves || []);
+      setCustomShelves(data.shelves || []);
+      console.log("Fetched shelves:", data.shelves);
+      // setTotalBooks(data.total || 0);
+    } catch (error) {
+      console.error("Error fetching shelves:", error);
+    }
+  };
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -230,13 +297,13 @@ const Books = () => {
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
-                    handleShelfSort(shelf);
+                    handleShelfSort(shelf.shelf_name);
                   }}
                   style={{ color: "blue", textDecoration: "underline", cursor: "pointer" }}
                   >
-                  {shelf} (
+                  {shelf.shelf_name} (
                   {
-                    totalBooks.filter((book) => book.shelf_name === shelf).length
+                    AllBooks.filter((book) => book.shelf_name === shelf.shelf_name).length
                   }
                   )
                   </a>
@@ -433,9 +500,50 @@ const Books = () => {
                   <td style={tdStyle}>{book.author_id}</td>
                   <td style={tdStyle}>{book.avg_rating}</td>
                   <td style={tdStyle}>{book.rating}</td>
-                  <td style={tdStyle}>{book.shelf_name}</td>
+                  {/* <td style={tdStyle}>{book.shelf_name}</td> */}
+                  <td style={tdStyle}>
+                    {
+                      [
+                        book.shelf_name,
+                        ...(Array.isArray(AllBooks)
+                          ? AllBooks
+                              .filter(allbook => allbook.name === book.name)
+                              .map(b => b.shelf_name)
+                          : [])
+                      ]
+                        .filter(Boolean) // removes undefined, null, empty strings
+                        .join(", ") || "Not Assigned"
+                    }
+                  </td>
+                  
                   <td style={tdStyle}>
                     {book.date_read ? new Date(book.date_read).toLocaleDateString() : '—'}
+                    
+                    <button
+                      style={{
+                        marginLeft: "10px",
+                        padding: "2px 6px",
+                        fontSize: "12px",
+                        cursor: "pointer"
+                      }}
+                      onClick={() =>
+                        setShowDateInput((prev) => ({
+                          ...prev,
+                          [book.book_id]: true
+                        }))
+                      }
+                    >
+                      Add Date
+                    </button>
+
+                    {/* This input appears ONLY for the row where book.id matches */}
+                    {showDateInput?.[book.book_id] && (
+                      <input
+                        type="date"
+                        style={{ marginLeft: "10px" }}
+                        onChange={(e) => handleDateAdded(book.book_id, e.target.value)}
+                      />
+                    )}
                   </td>
                   <td style={tdStyle}>
                     {book.date_added ? new Date(book.date_added).toLocaleDateString() : '—'}
