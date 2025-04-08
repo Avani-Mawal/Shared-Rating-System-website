@@ -105,7 +105,7 @@ app.post('/signup', async (req, res) => {
 
 app.get("/all-genres", async (req, res) => {
   try {
-    const result = await pool.query('SELECT distinct genre_name FROM genres');
+    const result = await pool.query('SELECT distinct genre_name FROM genre');
     const genres = result.rows;
     res.status(200).json({ message: "Genres fetched successfully", genres });
     console.log(genres);
@@ -209,6 +209,7 @@ app.get("/list-books", isAuthenticated, async (req, res) => {
         nbooks.name,
         nbooks.author_id,
         nbooks.avg_rating,
+        nbooks.image_link,
         bs.rating,
         bs.shelf_name,
         bs.date_read,
@@ -247,14 +248,63 @@ app.get('/books/:bookId', async (req, res) => {
     'SELECT rating FROM reviews WHERE book_id = $1 and user_id = $2',
     [bookId, req.session.userId]
   );
-  console.log(shelvesQuery.rows);
+
+  const authorQuery = await pool.query(
+    'SELECT * FROM authors WHERE author_id = $1',
+    [bookQuery.rows[0].author_id + 1]
+  );
+
+  console.log("Author", authorQuery.rows[0]);
+  console.log("Book", bookQuery.rows[0]);
+
+  genres = JSON.parse(bookQuery.rows[0].genre.replace(/'/g, '"'));
   res.json({
     book: {
       ...bookQuery.rows[0],
       reviews: reviewsQuery.rows,
     },
+    genres: genres,
+    author: authorQuery.rows[0],
     shelves: shelvesQuery.rows,
   });
+});
+
+// Sanskar : Year in books
+app.get('/year-in-books/:year', async (req, res) => {
+  const year = req.params.year;
+  const userId = req.session.userId;
+  try {
+    const books_query = `
+      SELECT sum(*) from userbooks WHERE user_id = $1 AND date_read IS NOT NULL AND EXTRACT(YEAR FROM date_read) = $2
+    `;
+    const books_result = await pool.query(books_query, [userId, year]);
+    const booksRead = books_result.rows[0].count || 0;
+
+    const pages_query = `
+      SELECT SUM(pages) as pages_read FROM userbooks, books WHERE user_id = $1 AND date_read IS NOT NULL AND EXTRACT(YEAR FROM date_read) = $2 AND userbooks.book_id = books.book_id
+    `;
+    const pages_result = await pool.query(pages_query, [userId, year]);
+    const pagesRead = pages_result.rows[0].pages_read || 0;
+    // const top_genres_query = `
+    //   SELECT genre, COUNT(*) as count FROM userbooks, books WHERE user_id = $1 AND date_read IS NOT NULL AND EXTRACT(YEAR FROM date_read) = $2 AND userbooks.book_id = books.book_id GROUP BY genre ORDER BY count DESC LIMIT 5
+    // `;
+    const top_authors_query = `
+      SELECT author_id, COUNT(*) as count FROM userbooks, books WHERE user_id = $1 AND date_read IS NOT NULL AND EXTRACT(YEAR FROM date_read) = $2 AND userbooks.book_id = books.book_id GROUP BY author_id ORDER BY count DESC LIMIT 5
+    `;
+    const top_authors_result = await pool.query(top_authors_query, [userId, year]);
+    const top_authors = top_authors_result.rows.map(row => row.author_id);
+    req.status(200).json({
+      message: "Year in books fetched successfully",
+      booksRead: booksRead,
+      pagesRead: pagesRead,
+      topAuthors: top_authors
+      // topGenres: top_genres_result.rows.map(row => row.genre),
+    });
+  }
+  catch (error) {
+    console.error("Error fetching pages read:", error);
+    res.status(500).json({ message: "Error fetching pages read" });
+  }
 });
 
 // API to rate a book
@@ -497,7 +547,7 @@ app.post("/create-shelf", isAuthenticated, async (req, res) => {
 app.post("/genre-description", async (req, res) => {
   const { genre } = req.query;
   try {
-    const query = "SELECT description FROM genres WHERE genre = $1";
+    const query = "SELECT description FROM genre WHERE genre = $1";
     const result = await pool.query(query, [genre]);
     if (result.rows.length === 0) {
       return res.status(400).json({ message: "Genre not found" });
@@ -602,15 +652,32 @@ app.get("/recommendations" , isAuthenticated, async (req, res) => {
 
 app.get("/search", async (req, res) => {
   const { q = "" } = req.query;
+
+  // Language name to code map
+  const langMap = {
+    english: "en",
+    french: "fr",
+    german: "de",
+    spanish: "es",
+    japanese: "ja",
+    chinese: "zh",
+    hindi: "hi",
+    // Add more if needed
+  };
+
   try {
+    const searchTerm = q.toLowerCase();
+    const mappedLangCode = langMap[searchTerm];
+
+    const values = [`%${searchTerm}%`, mappedLangCode || ""];
+
     const searchQuery = `
-      SELECT book_id, name, image_link, avg_rating
-      FROM books
-      WHERE name ILIKE $1
+      SELECT book_id, books.name, books.author_id, books.image_link, avg_rating, lang_code
+      FROM books, authors
+      WHERE authors.author_id = (books.author_id+1) AND ( books.name ILIKE $1 OR authors.name ILIKE $1  OR lang_code = $2)
       LIMIT 50;
     `;
 
-    const values = [`%${q}%`];
     const result = await pool.query(searchQuery, values);
 
     res.status(200).json({
@@ -622,6 +689,111 @@ app.get("/search", async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
+
+// Anushka trending books
+app.get('/top-rated-books', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM books ORDER BY avg_rating DESC LIMIT 10`
+    );
+    res.status(200).json({ books: result.rows });
+  } catch (err) {
+    console.error("Error fetching top-rated books:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Anushka new releases
+
+app.get('/new-releases-books', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM books ORDER BY publ_date DESC LIMIT 10`
+    );
+    res.status(200).json({ books: result.rows });
+  } catch (err) {
+    console.error("Error fetching newly released books:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Anushka user details
+
+app.get('/user-details', async (req, res) => {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({ error: "User not logged in" });
+    }
+
+    const query = "SELECT * FROM users WHERE user_id = $1";
+    const result = await pool.query(query, [req.session.userId]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.status(200).json({ user: result.rows[0] });
+  } catch (err) {
+    console.error("Error fetching user details:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.get("/authors", async (req, res) => {
+  try {
+    
+    const result = await pool.query(
+      "SELECT author_id, name, image_link FROM Authors"
+    );
+    res.json({ authors: result.rows });
+  } catch (err) {
+    console.error("Error fetching authors:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
+app.get('/authors/:authorId', async (req, res) => {
+  const authorId = req.params.authorId;
+
+  // Validate input
+  if (isNaN(authorId)) {
+    return res.status(400).json({ message: "Invalid author ID" });
+  }
+
+  try {
+    // Fetch author details
+    console.log("Author ID:", authorId);
+    const authorQuery = await pool.query(
+      'SELECT * FROM authors WHERE author_id = $1',
+      [authorId]
+    );
+
+    console.log("Author Query:", authorQuery.rows);
+
+    if (authorQuery.rows.length === 0) {
+      return res.status(404).json({ message: "Author not found" });
+    }
+
+    const author = authorQuery.rows[0];
+
+    // Fetch books by the author
+    const booksQuery = await pool.query(
+      'SELECT book_id, name, image_link, avg_rating FROM Books WHERE author_id = $1',
+      [authorId-1] // if you're storing author name strings
+    );
+
+    res.json({
+      author,
+      books: booksQuery.rows,
+    });
+  } catch (err) {
+    console.error("Error fetching author details:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 
 ////////////////////////////////////////////////////
 // Start the server
