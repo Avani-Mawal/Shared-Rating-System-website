@@ -10,10 +10,10 @@ const port = 4000;
 // PostgreSQL connection
 // NOTE: use YOUR postgres username and password here
 const pool = new Pool({
-  user: 'sanskar',
+  user: 'mugdha',
   host: 'localhost',
-  database: 'shared_reviews',
-  password: 'mugdhaorzz',
+  database: 'library',
+  password: 'avaniorzz',
   port: 5432,
 });
 
@@ -231,6 +231,49 @@ app.get("/list-books", isAuthenticated, async (req, res) => {
   }
 });
 
+app.get("/list-all-books", isAuthenticated, async (req, res) => {
+  try {
+        const query = `SELECT 
+        nbooks.book_id,
+        nbooks.name,
+        nbooks.author_id,
+        nbooks.avg_rating,
+        bs.rating,
+        bs.shelf_name,
+        bs.date_read,
+        bs.date_added
+            FROM Books AS nbooks
+            LEFT OUTER JOIN (
+        SELECT *
+        FROM Bookshelves
+        NATURAL JOIN UserBooks
+            ) AS bs
+            ON nbooks.book_id = bs.book_id
+            WHERE bs.user_id = $1 AND (bs.shelf_name IS NULL OR bs.shelf_name NOT IN ('Want to Read', 'Read', 'Currently Reading'));`
+      const result = await pool.query(query, [req.session.userId]);
+    const books = result.rows;
+    console.log(books);
+    res.status(200).json({ message: "Books fetched successfully", books });
+  } catch (error) {
+    console.error("Error listing books:", error);
+    res.status(500).json({ message: "Error listing books" });
+  }
+});
+
+app.get("/shelves", isAuthenticated, async (req, res) => {
+  try{
+    console.log("Session UserID:", req.session.userId);
+    const query = "SELECT DISTINCT shelf_name FROM bookshelves WHERE user_id = $1 and shelf_name not in ('Want to Read', 'Read', 'Currently Reading')";
+    const result = await pool.query(query, [req.session.userId]);
+    const shelves = result.rows;
+    console.log("Shelves:", shelves);
+    res.status(200).json({ message: "Shelves fetched successfully", shelves });
+  }
+  catch (error) {
+    console.error("Error fetching shelves:", error);
+    res.status(500).json({ message: "Error fetching shelves" });
+  }
+});
 
 // Mugdha : get book details
 app.get('/books/:bookId', async (req, res) => {
@@ -306,6 +349,22 @@ app.post("/rate-book", isAuthenticated, async (req, res) => {
   }
 });
 
+app.post("/add-date-read", isAuthenticated, async (req, res) => {
+  const { book_id, date_read } = req.body;
+  const userId = req.session.userId;
+
+  try {
+    // Update the date_read in the bookshelves table
+    const updateQuery = "UPDATE UserBooks SET date_read = $1 WHERE user_id = $2 AND book_id = $3";
+    await pool.query(updateQuery, [date_read, userId, book_id]);
+
+    res.status(200).json({ message: "Date read updated successfully" });
+  } catch (error) {
+    console.error("Error updating date read:", error);
+    res.status(500).json({ message: "Error updating date read" });
+  }
+}
+);
 // Mugdha : regarding book-details page, Add a shelf
 app.post('/sort-shelves', async (req, res) => {
   const { shelf_name } = req.body;
@@ -462,16 +521,32 @@ app.post("/create-shelf-and-add-book", isAuthenticated, async (req, res) => {
   }
 });
 
+app.post("/get-reviews", isAuthenticated, async (req, res) => {
+  try{
+    const { book_id } = req.body;
+    console.log("Book ID:", book_id);
+    const query = `Select reviews.user_id, 
+                   reviews.rating, 
+                   reviews.review_text,
+                    reviews.review_date,
+                    users.username
+                    from reviews, users
+                    where reviews.book_id = $1 and 
+                    reviews.user_id = users.user_id`;
+    const reviews = await pool.query(query, [book_id]);
+    console.log(reviews.rows);
+    res.status(200).json({ message: "Reviews fetched successfully", reviews: reviews.rows });
+  }catch (error) {
+    console.error("Error fetching reviews:", error);
+    res.status(500).json({ message: "Error fetching reviews" });
+  }
+});
 
 // API to create a new shelf in books page
 app.post("/create-shelf", isAuthenticated, async (req, res) => {
   const { shelf_name } = req.body;
   const user_id = req.session.userId;
-  // check this
-  // const referer = req.headers.referer || ""; // Default to an empty string if undefined
-  // const bookId = referer.includes('/') ? referer.split('/').pop() : null; // Extract bookId if valid
-  // console.log("SSS", referer, "Extracted bookId:", bookId);
-  // console.log("book_id: ", bookId);
+  
   console.log("Shelf Name:", shelf_name);
   
   try {
@@ -484,8 +559,8 @@ app.post("/create-shelf", isAuthenticated, async (req, res) => {
     }
 
     // Insert the new shelf
-    const insertQuery = "INSERT INTO bookshelves (user_id, book_id, shelf_name) VALUES ($1, $2, $3)";
-    await pool.query(insertQuery, [user_id, bookId, shelf_name]);
+    const insertQuery = "INSERT INTO bookshelves (user_id, shelf_name) VALUES ($1, $2)";
+    await pool.query(insertQuery, [user_id, shelf_name]);
 
     res.status(200).json({ message: "Shelf created successfully" });
   } catch (error) {
