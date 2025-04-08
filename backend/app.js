@@ -204,24 +204,23 @@ app.post("/genre-books", async (req, res) => {
 // cover, title, author, avg_rating, rating, shelves, review, date_read, date_added
 app.get("/list-books", isAuthenticated, async (req, res) => {
   try {
-        const query = `SELECT distinct
+        const query = `SELECT 
         nbooks.book_id,
         nbooks.name,
         nbooks.author_id,
         nbooks.avg_rating,
         bs.rating,
-        count(bs.shelf_name),
+        bs.shelf_name,
         bs.date_read,
         bs.date_added
-      FROM Books AS nbooks
-      LEFT OUTER JOIN (
+            FROM Books AS nbooks
+            LEFT OUTER JOIN (
         SELECT *
         FROM Bookshelves
         NATURAL JOIN UserBooks
-      ) AS bs
-      ON nbooks.book_id = bs.book_id
-      WHERE bs.user_id = $1
-      GROUP BY nbooks.book_id, nbooks.name, nbooks.author_id, nbooks.avg_rating, bs.rating, bs.date_read, bs.date_added;`
+            ) AS bs
+            ON nbooks.book_id = bs.book_id
+            WHERE bs.user_id = $1 AND bs.shelf_name IN ('Want to Read', 'Read', 'Currently Reading');`
       const result = await pool.query(query, [req.session.userId]);
     const books = result.rows;
     console.log(books);
@@ -336,25 +335,24 @@ app.post('/sort-shelves', async (req, res) => {
         WHERE bs.user_id = $1) select * from selected_shelf where shelf_name = $2;`;
       result = await pool.query(query, [req.session.userId, shelf_name]);
     } else {
-      query = `SELECT distinct
+      query = `SELECT 
         nbooks.book_id,
         nbooks.name,
         nbooks.author_id,
         nbooks.avg_rating,
         bs.rating,
-        count(bs.shelf_name),
+        bs.shelf_name,
         bs.date_read,
         bs.date_added
-      FROM Books AS nbooks
-      LEFT OUTER JOIN (
+            FROM Books AS nbooks
+            LEFT OUTER JOIN (
         SELECT *
         FROM Bookshelves
         NATURAL JOIN UserBooks
-      ) AS bs
-      ON nbooks.book_id = bs.book_id
-      WHERE bs.user_id = $1
-      GROUP BY nbooks.book_id, nbooks.name, nbooks.author_id, nbooks.avg_rating, bs.rating, bs.date_read, bs.date_added;`
-    result = await pool.query(query, [req.session.userId]);
+            ) AS bs
+            ON nbooks.book_id = bs.book_id
+            WHERE bs.user_id = $1 AND bs.shelf_name IN ('Want to Read', 'Read', 'Currently Reading');`
+      result = await pool.query(query, [req.session.userId]);
     }
 
     console.log(result.rows);
