@@ -44,6 +44,7 @@ const Book = () => {
       credentials: "include",
       body: JSON.stringify({ book_id: bookId, rating: newRating }),
     });
+    alert("Rating updated successfully!");
   };
 
   const handleShelfChange = async () => {
@@ -95,6 +96,7 @@ return (
                         ))}
                     </select>
                 </div>
+                
             </div>
 
             <div className="details-section">

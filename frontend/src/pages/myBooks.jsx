@@ -53,7 +53,7 @@ const Books = () => {
 
       if (response.ok) {
         // Optional: Add to a list of custom shelves
-        setCustomShelves([...customShelves, newShelfName]);
+        setCustomShelves([...customShelves, { name: newShelfName }]);
 
         // Add the new shelf to the shelves state
         setShelves([...shelves, { name: newShelfName }]);
@@ -116,6 +116,7 @@ const Books = () => {
       console.log("Fetched books:", data.books);
       setBooks(data.books);
       setTotalBooks(data.books || []);
+      console.log(data.books);
     } catch (error) {
       console.error("Error fetching book:", error);
     }
@@ -180,7 +181,8 @@ const Books = () => {
                   style={{ color: "blue", textDecoration: "underline", cursor: "pointer" }}
                 >
                   Read (
-                  {
+                  { 
+                  
                     totalBooks.filter((book) => book.shelf_name === "Read").length
                   }
                   )
@@ -202,6 +204,7 @@ const Books = () => {
                   }
                   )
                 </a>
+                
             
           </div>
           <div>
