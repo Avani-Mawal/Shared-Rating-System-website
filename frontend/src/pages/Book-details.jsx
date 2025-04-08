@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router";
 import { useParams } from "react-router";
 import Navbar from "../components/Navbar";
 import { apiUrl } from "../config/config";
@@ -6,11 +7,14 @@ import { apiUrl } from "../config/config";
 import "../css/Book-details.css";
 
 const Book = () => {
+  const navigate = useNavigate();
   const { bookId } = useParams(); // assuming the URL is like /books/:bookId
   const [book, setBook] = useState(null);
+  const [author, setAuthor] = useState("");
   const [shelves, setShelves] = useState([]);
   const [rating, setRating] = useState(0);
   const [selectedShelf, setSelectedShelf] = useState("");
+  const [genres, setGenres] = useState([]);
   const [newShelf, setNewShelf] = useState("");
 
   // Fetch book info
@@ -23,7 +27,9 @@ const Book = () => {
         });
         const data = await response.json();
         setBook(data.book);
+        setAuthor(data.author);
         setRating(data.book.reviews|| 0);
+        setGenres(data.genres || []);
         setShelves(data.shelves);
       } catch (error) {
         console.error("Error fetching book:", error);
@@ -32,7 +38,7 @@ const Book = () => {
 
     fetchBook();
 
-  }, [bookId]);
+  }, [bookId, navigate]);
 
   const handleRatingChange = async (e) => {
     const newRating = parseInt(e.target.value);
@@ -101,16 +107,20 @@ return (
 
             <div className="details-section">
                 <h2>{book.name}</h2>
-                <h4>{book.author_id}</h4>
+                <a href={`/authors/${author.author_id}`}><h4>{author.name}</h4></a>
                 <p className="description">{book.description}</p>
 
                 <div className="meta-section">
-                    <p><strong>Genres:</strong> {book.genres?.join(", ")}</p>
-                    <p><strong>Pages:</strong> {book.pnum_ages} pages</p>
+                    <p><strong>Genres:</strong> {
+                      genres.length > 0 && 
+                      genres.map((genre, idx) => (
+                        <a href={`/genre/${genre}`}><span key={idx} className="genre">{genre}, </span></a>
+                      ))
+                    }</p>
+                    <p><strong>Pages:</strong> {book.num_pages} pages</p>
                     <p><strong>Published:</strong> {book.publ_date}</p>
                     <p><strong>ISBN:</strong> {book.isbn}</p>
                     <p><strong>Language:</strong> {book.lang_code}</p>
-                    <p><strong>Characters:</strong> {book.characters?.join(", ")}</p>
                 </div>
 
                 <h3>📚 Your Shelves</h3>

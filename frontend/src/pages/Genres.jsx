@@ -25,7 +25,6 @@ const Genres = () => {
   };
 
 
-
   const getAllGenres = async () => {
     try {
         const response = await fetch(`${apiUrl}/all-genres`, {
@@ -35,6 +34,7 @@ const Genres = () => {
         if (response.status === 200) {
             const data = await response.json();
             setAllGenres(data.genres);
+            setGenreToShow(data.genres.slice(0, 10)); // Show only the first 10 genres
         } else {
             const errorData = await response.json();
             alert(errorData.message);
@@ -54,7 +54,6 @@ const Genres = () => {
         });
         if (response.status === 200) {
             const data = await response.json();
-            setGenreToShow(data.genres);
             console.log(data.genres);
             try {
                 const books = await fetch (`${apiUrl}/genre-books`, {
@@ -93,7 +92,7 @@ const Genres = () => {
             if (response.status !== 200) {
               navigate("/login");
             } else {
-            
+            getAllGenres(); // ⬅️ Fetch all genres
             getGenres(); // ⬅️ Fetch genres
             setLoading(false); // ⬅️ Done loading, safe to show page
             }
@@ -153,7 +152,7 @@ const Genres = () => {
             <div className="browse-genres">
               <h3>BROWSE</h3>
               <div className="genre-list">
-                {allGenres.map((g) => <a href= {`/genre/${g.toLowerCase()}`} key={g}>{g}</a>)}
+                {genreToShow.map((g) => <a href= {`/genre/${g.genre_name.toLowerCase()}`} key={g.genre_name}>{g.genre_name}</a>)}
               </div>
               <a className="more-genres-link" href="#" onClick={openModal}>More genres...</a>
             </div>
@@ -166,11 +165,14 @@ const Genres = () => {
         contentLabel="All Genres"
       >
         <h2>All Genres</h2>
-        <button onClick={closeModal}>Close</button>
         <div className="all-genres-list">
-          {Object.keys(allGenres).map((g) => (
-            <a href= {`/genre/${g.toLowerCase()}`} key={g}>{g}</a>
-          ))}
+          <ul>
+            {(allGenres).map((g) => (
+              <li ><a href= {`/genre/${g.genre_name.toLowerCase()}`} key={g}>{g.genre_name} </a> </li>
+              ))}
+          </ul>
+          <button onClick={closeModal}>Close</button>
+          
         </div>
       </Modal>
     </div>

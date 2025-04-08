@@ -298,7 +298,7 @@ const Books = () => {
           <ul style={{ listStyle: "none", padding: 0 }}>
             <li>Review Drafts</li>
             <li>Reading Challenge</li>
-            <li>Year in Books</li>
+            <li><a href="year-in-books">Year in Books</a></li>
             <li>Reading stats</li>
           </ul>
 

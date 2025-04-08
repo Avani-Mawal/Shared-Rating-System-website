@@ -8,8 +8,11 @@ import Recommendations from "./pages/Recommendations";
 import Genres from "./pages/Genres";
 import GenreDetail from "./pages/GenreDetail";
 import Book from "./pages/Book-details";
-import search from "./pages/search";
+import Books from "./pages/myBooks";
 import Search from "./pages/search";
+import AuthorList from "./pages/Author-list";
+import AuthorDetails from "./pages/Author";
+import Year_Books from "./pages/Year-in-Books";
 
 function App() {
   return (
@@ -23,6 +26,10 @@ function App() {
       <Route path="/genre/:genreName" element={<GenreDetail />} />
       <Route path="/books/:bookId" element={<Book />} />
       <Route path="/search" element={<Search />} />
+      <Route path="/myBooks" element={<Books />} />
+      <Route path="/AuthorList" element={<AuthorList />} /> 
+      <Route path="/authors/:authorId" element={<AuthorDetails />} /> 
+      <Route path="/year-in-books" element={<Year_Books />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
