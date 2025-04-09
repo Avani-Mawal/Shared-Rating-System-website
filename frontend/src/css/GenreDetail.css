@@ -40,3 +40,59 @@ body{
   object-fit: cover;
   border-radius: 4px;
 }
+.pagination-controls {
+  display: flex;
+  margin : 20px;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.pagination-btn {
+  padding: 10px 20px;
+  margin: 0 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.pagination-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  font-size: 16px;
+}
+
+.add-favorite-btn {
+  padding: 10px 20px;
+  margin: 20px 0;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.add-favorite-btn:hover {
+  background-color: #218838;
+}
+
+.remove-favorite-btn {
+  padding: 10px 20px;
+  margin: 20px 0;
+  background-color: #e90000;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.remove-favorite-btn:hover {
+  background-color: #e64c09;
+}

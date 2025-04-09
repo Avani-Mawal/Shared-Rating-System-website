@@ -12,6 +12,7 @@
     "react-modal": "^3.16.3",
     "react-router": "^7.1.5",
     "react-scripts": "5.0.1",
+    "readmore": "^0.0.2",
     "web-vitals": "^2.1.4"
   },
   "scripts": {

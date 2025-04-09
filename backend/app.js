@@ -116,6 +116,36 @@ app.get("/all-genres", async (req, res) => {
 }
 );
 
+app.post("/update-fav", async (req, res) => {
+  const { genre, action } = req.body; 
+  const userId = req.session.userId;
+  try {
+    // Fetch the user's current genres
+    const result = await pool.query('SELECT genres FROM users WHERE user_id = $1', [userId]);
+    const genresString = result.rows[0]?.genres || "[]";
+    let genres = JSON.parse(genresString);
+
+    if (action === 1) {
+      // Add genre to favorites if not already present
+      if (!genres.includes(genre)) {
+        genres.push(genre);
+      }
+    } else if (action === 0) {
+      // Remove genre from favorites
+      genres = genres.filter((g) => g !== genre);
+    } else {
+      return res.status(400).json({ message: "Invalid action" });
+    }
+
+    // Update the user's genres in the database
+    await pool.query('UPDATE users SET genres = $1 WHERE user_id = $2', [JSON.stringify(genres), userId]);
+
+    res.status(200).json({ message: "Favorites updated successfully", genres });
+  } catch (error) {
+    console.error("Error updating Favs: ", error);
+    res.status(500).json({ message: "Error updating genres" });
+  }})
+
 app.get("/user-genres", async (req, res) => {
   try {
     const result = await pool.query('SELECT genres FROM users where user_id = $1', [req.session.userId]);
@@ -571,9 +601,38 @@ app.post("/create-shelf-and-add-book", isAuthenticated, async (req, res) => {
   }
 });
 
+app.post("/add-review", isAuthenticated, async (req, res) => {
+  const {book_id, review_text, rating} = req.body;
+  try{
+    const user_id = req.session.userId;
+    const insertQuery = "INSERT INTO reviews (user_id, book_id, review_text, rating) VALUES ($1, $2, $3, $4)";
+    await pool.query(insertQuery, [user_id, book_id, review_text, rating]);
+
+    res.status(200).json({ message: "Review added successfully" });
+  } catch(error){
+    console.error("Error adding review:", error);
+    res.status(500).json({ message: "Error adding review" });
+  }
+});
+
+app.post("/edit-review", isAuthenticated, async (req, res) => {
+  const {book_id, review_text, rating} = req.body;
+  try{
+    const user_id = req.session.userId;
+    const updateQuery = "UPDATE reviews SET review_text = $1, rating = $2 WHERE user_id = $3 AND book_id = $4";
+    await pool.query(updateQuery, [review_text, rating, user_id, book_id]);
+    res.status(200).json({ message: "Review updated successfully" });
+  } catch(error){
+    console.error("Error updating review:", error);
+    res.status(500).json({ message: "Error updating review" });
+  }
+});
+
 app.post("/get-reviews", isAuthenticated, async (req, res) => {
   try{
     const { book_id } = req.body;
+    const user_id = req.session.userId;
+    
     console.log("Book ID:", book_id);
     const query = `Select reviews.user_id, 
                    reviews.rating, 
@@ -584,8 +643,17 @@ app.post("/get-reviews", isAuthenticated, async (req, res) => {
                     where reviews.book_id = $1 and 
                     reviews.user_id = users.user_id`;
     const reviews = await pool.query(query, [book_id]);
+
+    const checkQuery = `SELECT * FROM reviews WHERE user_id = $1 AND book_id = $2 AND review_text IS NOT NULL`;
+    const checkResult = await pool.query(checkQuery, [user_id, book_id]);
+    
+    userReview = null;
+    if (checkResult.rows.length > 0) {
+      userReview = checkResult.rows[0].review_text;
+    }
+
     console.log(reviews.rows);
-    res.status(200).json({ message: "Reviews fetched successfully", reviews: reviews.rows });
+    res.status(200).json({ message: "Reviews fetched successfully", reviews: reviews.rows, userReview });
   }catch (error) {
     console.error("Error fetching reviews:", error);
     res.status(500).json({ message: "Error fetching reviews" });
@@ -620,14 +688,15 @@ app.post("/create-shelf", isAuthenticated, async (req, res) => {
 });
 
 app.post("/genre-description", async (req, res) => {
-  const { genre } = req.query;
+  const { genre } = req.body;
   try {
-    const query = "SELECT description FROM genre WHERE genre = $1";
+    console.log("Genre:", genre);
+    const query = "SELECT genre_desc FROM genre WHERE genre_name = $1";
     const result = await pool.query(query, [genre]);
     if (result.rows.length === 0) {
       return res.status(400).json({ message: "Genre not found" });
     }
-    const description = result.rows[0].description;
+    const description = result.rows[0].genre_desc;
     res.status(200).json({ message: "Description fetched successfully", description });
   } catch (error) {
     console.error("Error fetching description:", error);

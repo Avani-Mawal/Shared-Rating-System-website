@@ -1,95 +1,3 @@
-// import React, { useEffect, useState } from "react";
-// import { useNavigate } from "react-router";
-// import { apiUrl } from "../config/config";
-// import SearchBar from "../components/SearchBar";
-// import "../css/Navbar.css";
-
-// const Navbar = () => {
-//   const navigate = useNavigate();
-//   const [showDropdown, setShowDropdown] = useState(false);
-//   const [loggedIn, setLoggedIn] = useState(false);
-//   const [loading, setLoading] = useState(true);
-
-//   useEffect(() => {
-//     const checkLoginStatus = async () => {
-//       try {
-//         const response = await fetch(`${apiUrl}/isLoggedIn`, {
-//           credentials: "include",
-//         });
-//         if (response.status !== 200) {
-//           setLoggedIn(false);
-//         } else {
-//           setLoggedIn(true);
-//         }
-//         setLoading(false);
-//       } catch (error) {
-//         console.error("Error checking login status:", error);
-//         navigate("/login");
-//       }
-//     };
-
-//     checkLoginStatus();
-//   }, [navigate]);
-
-//   if (loading) {
-//     return <div className="loading">Loading...</div>;
-//   }
-
-//   const handleDropdownClick = (path) => {
-//     navigate(path);
-//     setShowDropdown(false);
-//   };
-
-//   return (
-//     <nav className="navbar">
-//       <div className="navbar-logo" onClick={() => navigate("/")}>
-//         GoodReads Clone
-//       </div>
-
-//       <div className="navbar-links">
-//         <a href="/">Home</a>
-//         <a href="/myBooks">My Books</a>
-
-//         <div
-//           className="dropdown"
-//           onMouseEnter={() => setShowDropdown(true)}
-//           onMouseLeave={() => setShowDropdown(false)}
-//         >
-//           <span className="dropdown-toggle">Browse ▾</span>
-//           {showDropdown && (
-//             <div className="dropdown-menu">
-//               <div onClick={() => handleDropdownClick("/genres")}>Genre</div>
-//               <div onClick={() => handleDropdownClick("/recommendations")}>Recommendations</div>
-//             </div>
-//           )}
-//         </div>
-
-//         <a href="/community">Community</a>
-//       </div>
-
-//       <div className="navbar-search">
-//         <SearchBar onSearchResults={() => {}} />
-//       </div>
-
-//       {/* Anushka for logout button */}
-//       <div className="navbar-actions">
-//         {!loggedIn && (
-//           <>
-//             <button className="login-btn" onClick={() => navigate("/login")}>
-//               Login
-//             </button>
-//             <button className="signup-btn" onClick={() => navigate("/signup")}>
-//               Signup
-//             </button>
-//           </>
-//         )}
-//       </div>
-//     </nav>
-//   );
-// };
-
-// export default Navbar;
-
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { apiUrl } from "../config/config";
@@ -101,7 +9,7 @@ const Navbar = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [showPopup, setShowPopup] = useState(false); // make sure this is defined
+  const [showPopup, setShowPopup] = useState(false); 
   const [userDetails, setUserDetails] = useState({});
 
   useEffect(() => {

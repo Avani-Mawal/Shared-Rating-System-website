@@ -17,6 +17,10 @@ const Book = () => {
   const [genres, setGenres] = useState([]);
   const [newShelf, setNewShelf] = useState("");
   const [Reviews, setReviews] = useState([]);
+  const [userReview, setUserReview] = useState(null);
+  const [reviewText, setReviewText] = useState("");
+  const [reviewRating, setReviewRating] = useState(5);
+
   // Fetch book info
   useEffect(() => {
     const fetchBook = async () => {
@@ -115,6 +119,8 @@ const Book = () => {
       setReviews(data.reviews);
       if (res.status === 200) {
         console.log(data.reviews);
+        setUserReview(data.userReview);
+        setReviewText(data.userReview ? data.userReview : "");
         return data.reviews;
       } else {
         console.error("Error fetching reviews:", data.message);
@@ -132,7 +138,6 @@ const Book = () => {
         <Navbar />
 
         <div className="container">
-            {/* Book Image and Actions */}
             <div className="book-info">
             <div className="image-section">
                 <img src={book.image_link} alt={book.name} className="cover" />
@@ -161,7 +166,7 @@ const Book = () => {
                     <p><strong>Genres:</strong> {
                       genres.length > 0 && 
                       genres.map((genre, idx) => (
-                        <a href={`/genre/${genre}`}><span key={idx} className="genre">{genre}, </span></a>
+                        <a key = {idx} href={`/genre/${genre}`}><span key={idx} className="genre">{genre}, </span></a>
                       ))
                     }</p>
                     <p><strong>Pages:</strong> {book.num_pages} pages</p>
@@ -188,8 +193,8 @@ const Book = () => {
                         onChange={(e) => setSelectedShelf(e.target.value)}
                     >
                         <option value="">-- Select --</option>
-                        {["Read", "Currently Reading", "Want to Read"].map((shelf) => (
-                            <option key={shelf} value={shelf}>
+                        {["Read", "Currently Reading", "Want to Read"].map((shelf, idx) => (
+                            <option key={idx} value={shelf}>
                                 {shelf}
                             </option>
                         ))}
@@ -209,9 +214,57 @@ const Book = () => {
                 </div>
             </div>
             </div>
-            {/* Reviews Section (Moved Below) */}
             <div className="review-section" style={{ marginTop: "40px" }}>
                 <h3>📖 Reviews</h3>
+                <div className="review-form" style={{ marginTop: "40px", borderTop: "1px solid #ccc", paddingTop: "20px" }}>
+                    <h3>{userReview ? "✏️ Edit Your Review" : "📝 Write a Review"}</h3>
+                    
+                    <label style={{ display: "block", marginBottom: "5px" }}>Your Rating: </label>
+                    <select
+                      value={reviewRating}
+                      onChange={(e) => setReviewRating(parseInt(e.target.value))}
+                      style={{ marginBottom: "10px" }}
+                    >
+                      {[1, 2, 3, 4, 5].map((r) => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
+
+                    <br />
+                    <textarea
+                      value={reviewText}
+                      onChange={(e) => setReviewText(e.target.value)}
+                      placeholder="Write your thoughts..."
+                      rows={5}
+                      style={{ width: "100%", marginBottom: "10px" }}
+                    />
+                    
+                    <br />
+                    <button onClick={async () => {
+                      const endpoint = userReview ? "/edit-review" : "/add-review";
+                      const res = await fetch(`${apiUrl}${endpoint}`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "include",
+                        body: JSON.stringify({
+                          book_id: bookId,
+                          review_text: reviewText,
+                          rating: reviewRating
+                        }),
+                      });
+
+                      if (res.status === 200) {
+                        alert(userReview ? "Review updated!" : "Review added!");
+                        fetchReviews(bookId); // refresh the reviews list
+                      } else {
+                        alert("Error submitting review.");
+                      }
+                    }}>
+                      {userReview ? "Update Review" : "Submit Review"}
+                    </button>
+                  </div>
+                                    
+
                 {Reviews && Reviews.length > 0 ? (
                     Reviews.map((review, index) => (
                         <div key={index} className="review-card" style={{ borderBottom: "1px solid #ddd", padding: "15px 0" }}>
@@ -225,11 +278,9 @@ const Book = () => {
                             <div style={{ marginTop: "5px", color: "orange" }}>
                                 {"★".repeat(Math.floor(review.rating)) + "☆".repeat(5 - Math.floor(review.rating))}
                             </div>
-
                             <div style={{ marginTop: "10px", whiteSpace: "pre-wrap" }}>
                                 {review.review_text.length > 300 ? (
-                                    // <ReadMore text={review.review_text} maxLength={300} />
-                                    <></>
+                                    <ReadMore text={review.review_text} maxLength={300} />
                                 ) : (
                                     <>{review.review_text}</>
                                 )}
