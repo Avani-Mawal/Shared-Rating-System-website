@@ -11,6 +11,7 @@ const Book = () => {
   const { bookId } = useParams(); // assuming the URL is like /books/:bookId
   const [book, setBook] = useState(null);
   const [shelves, setShelves] = useState([]);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [rating, setRating] = useState(0);
   const [selectedShelf, setSelectedShelf] = useState("");
   const [newShelf, setNewShelf] = useState("");
@@ -20,7 +21,6 @@ const Book = () => {
   const [author, setAuthor] = useState("");
   const [userReview, setUserReview] = useState(null);
   const [reviewText, setReviewText] = useState("");
-  const [loggedIn, setLoggedIn] = useState(false);
   const [reviewRating, setReviewRating] = useState(5);
   const [totalshelves, setTotalShelves] = useState([]);
   // Fetch book info
@@ -30,15 +30,16 @@ const Book = () => {
     handleRatingChange(star); // pass just the number, not a fake event
   };
 
+  // Check login status
   const checkLoginStatus = async () => {
     try {
       const response = await fetch(`${apiUrl}/isLoggedIn`, {
         credentials: "include",
       });
       if (response.status !== 200) {
-        setLoggedIn(false);
+        setIsLoggedIn(false);
       } else {
-        setLoggedIn(true);
+        setIsLoggedIn(true);
       }
     } catch (error) {
       console.error("Error checking login status:", error);
@@ -46,11 +47,9 @@ const Book = () => {
     }
   };
 
-
   useEffect(() => {
     const fetchBook = async () => {
       try {
-        checkLoginStatus();
         const response = await fetch(`${apiUrl}/books/${bookId}`, {
           method: "GET",
           credentials: "include",
@@ -67,11 +66,51 @@ const Book = () => {
         console.error("Error fetching book:", error);
       }
     };
-
+    checkLoginStatus();
     fetchBook();
     fetchShelves();
     fetchReviews(bookId);
   }, [bookId, navigate]);
+
+  //   const ReadMore = ({ text, maxLength }) => {
+  //     const [expanded, setExpanded] = useState(false);
+
+  //     if (text.length <= maxLength) return <span>{text}</span>;
+
+  //     return (
+  //         <span>
+  //             {expanded ? text : `${text.slice(0, maxLength)}... `}
+  //             <a
+  //                 href="#"
+  //                 onClick={(e) => {
+  //                     e.preventDefault();
+  //                     setExpanded(!expanded);
+  //                 }}
+  //                 style={{ color: "blue", cursor: "pointer", textDecoration: "underline" }}
+  //             >
+  //                 {expanded ? "Show less" : "Show more"}
+  //             </a>
+  //         </span>
+  //     );
+  // };
+
+  const fetchShelves = async () => {
+    try {
+      const response = await fetch(`${apiUrl}/get-shelves`, {
+        method: "GET",
+        credentials: "include",
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setTotalShelves(data.shelves);
+        console.log("Fetched shelves:", data.shelves);
+      } else {
+        console.error("Failed to fetch shelves");
+      }
+    } catch (error) {
+      console.error("Error fetching shelves:", error);
+    }
+  };
 
   const handleRatingChange = async (newRating) => {
     setRating(newRating);
@@ -177,7 +216,17 @@ const Book = () => {
             >
               Buy on Amazon
             </button>
-            
+            {/* <div className="rating">{rating.rating || "4.0"} (Rated)</div>
+                        <div>
+                          <label>Rate this book: </label>
+                          <select value={rating.rating} onChange={handleRatingChange}>
+                            {[1, 2, 3, 4, 5].map((rate) => (
+                              <option key={rate} value={rate}>
+                                {rate}
+                              </option>
+                            ))}
+                          </select>
+                        </div> */}
 
           </div>
           <div>
@@ -200,6 +249,8 @@ const Book = () => {
               ))}
             </div>
           </div>
+
+
           {/* Book Details */}
           <div className="details-section">
             <h2>{book.name}</h2>
@@ -267,62 +318,61 @@ const Book = () => {
             </div>
           </div>
         </div>
-        <div className="review-section" style={{ marginTop: "40px" }}>
+        <div className="review-section" style={{ marginTop: "40px"}}>
           <h3>📖 Reviews</h3>
-          {(loggedIn ?
-            <div className="review-form" style={{ marginTop: "40px", borderTop: "1px solid #ccc", paddingTop: "20px" }}>
-              <h3>{userReview ? "✏️ Edit Your Review" : "📝 Write a Review"}</h3>
+          {isLoggedIn ? <div className="review-form" style={{ marginTop: "40px", borderTop: "1px solid #ccc", paddingTop: "20px" }}>
+            <h3>{userReview ? "✏️ Edit Your Review" : "📝 Write a Review"}</h3>
 
-              <label style={{ display: "block", marginBottom: "5px" }}>Your Rating: </label>
-              <select
-                value={reviewRating}
-                onChange={(e) => setReviewRating(parseInt(e.target.value))}
-                style={{ marginBottom: "10px" }}
-              >
-                {[1, 2, 3, 4, 5].map((r) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
+            <label style={{ display: "block", marginBottom: "5px" }}>Your Rating: </label>
+            <select
+              value={reviewRating}
+              onChange={(e) => setReviewRating(parseInt(e.target.value))}
+              style={{ marginBottom: "10px" }}
+            >
+              {[1, 2, 3, 4, 5].map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
 
-              <br />
-              <textarea
-                value={reviewText}
-                onChange={(e) => setReviewText(e.target.value)}
-                placeholder="Write your thoughts..."
-                rows={5}
-                style={{ width: "100%", marginBottom: "10px" }}
-              />
+            <br />
+            <textarea
+              value={reviewText}
+              onChange={(e) => setReviewText(e.target.value)}
+              placeholder="Write your thoughts..."
+              rows={5}
+              style={{ width: "100%", marginBottom: "10px" }}
+            />
 
-              <br />
-              <button onClick={async () => {
-                const endpoint = userReview ? "/edit-review" : "/add-review";
-                const res = await fetch(`${apiUrl}${endpoint}`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  credentials: "include",
-                  body: JSON.stringify({
-                    book_id: bookId,
-                    review_text: reviewText,
-                    rating: reviewRating
-                  }),
-                });
+            <br />
+            <button onClick={async () => {
+              const endpoint = userReview ? "/edit-review" : "/add-review";
+              const res = await fetch(`${apiUrl}${endpoint}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({
+                  book_id: bookId,
+                  review_text: reviewText,
+                  rating: reviewRating
+                }),
+              });
 
-                if (res.status === 200) {
-                  alert(userReview ? "Review updated!" : "Review added!");
-                  fetchReviews(bookId); // refresh the reviews list
-                } else {
-                  alert("Error submitting review.");
-                }
-              }}>
-                {userReview ? "Update Review" : "Submit Review"}
-              </button>
-            </div>
+              if (res.status === 200) {
+                alert(userReview ? "Review updated!" : "Review added!");
+                fetchReviews(bookId); // refresh the reviews list
+              } else {
+                alert("Error submitting review.");
+              }
+            }}>
+              {userReview ? "Update Review" : "Submit Review"}
+            </button>
+          </div>
             :
             <div>
-              <h3>Login to write a review</h3>
-              <button onClick={() => navigate("/login")}>Login</button>
+              <p> Login to give ratings and reviews </p>
+              <button onClick={() => navigate("/login")} style={{ background: "blue", color: "white", padding: "10px 20px", border: "none", borderRadius: "5px" }} > Login! </button>
             </div>
-          )}
+          }
 
 
           {Reviews && Reviews.length > 0 ? (
