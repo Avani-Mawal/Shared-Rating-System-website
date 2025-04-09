@@ -691,7 +691,7 @@ app.post("/edit-review", isAuthenticated, async (req, res) => {
   }
 });
 
-app.post("/get-reviews", isAuthenticated, async (req, res) => {
+app.post("/get-reviews", async (req, res) => {
   try{
     const { book_id } = req.body;
     const user_id = req.session.userId;
@@ -706,16 +706,17 @@ app.post("/get-reviews", isAuthenticated, async (req, res) => {
                     where reviews.book_id = $1 and 
                     reviews.user_id = users.user_id`;
     const reviews = await pool.query(query, [book_id]);
-
-    const checkQuery = `SELECT * FROM reviews WHERE user_id = $1 AND book_id = $2 AND review_text IS NOT NULL`;
-    const checkResult = await pool.query(checkQuery, [user_id, book_id]);
-    
     userReview = null;
-    if (checkResult.rows.length > 0) {
-      userReview = checkResult.rows[0].review_text;
-    }
+    if (user_id != null) {
+      const checkQuery = `SELECT * FROM reviews WHERE user_id = $1 AND book_id = $2 AND review_text IS NOT NULL`;
+      const checkResult = await pool.query(checkQuery, [user_id, book_id]);
+      
+      if (checkResult.rows.length > 0) {
+        userReview = checkResult.rows[0].review_text;
+      }
 
-    console.log(reviews.rows);
+      console.log(reviews.rows);
+    }
     res.status(200).json({ message: "Reviews fetched successfully", reviews: reviews.rows, userReview });
   }catch (error) {
     console.error("Error fetching reviews:", error);

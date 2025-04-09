@@ -16,11 +16,12 @@ const Book = () => {
   const [newShelf, setNewShelf] = useState("");
   const [Reviews, setReviews] = useState([]);
   const [hoveredRating, setHoveredRating] = useState(0);
-    const [genres, setGenres] = useState([]);
-    const [author, setAuthor] = useState("");
-    const [userReview, setUserReview] = useState(null);
-    const [reviewText, setReviewText] = useState("");
-    const [reviewRating, setReviewRating] = useState(5);
+  const [genres, setGenres] = useState([]);
+  const [author, setAuthor] = useState("");
+  const [userReview, setUserReview] = useState(null);
+  const [reviewText, setReviewText] = useState("");
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
   // Fetch book info
 
   const onStarClick = (star) => {
@@ -28,9 +29,27 @@ const Book = () => {
     handleRatingChange(star); // pass just the number, not a fake event
   };
 
+  const checkLoginStatus = async () => {
+    try {
+      const response = await fetch(`${apiUrl}/isLoggedIn`, {
+        credentials: "include",
+      });
+      if (response.status !== 200) {
+        setLoggedIn(false);
+      } else {
+        setLoggedIn(true);
+      }
+    } catch (error) {
+      console.error("Error checking login status:", error);
+      navigate("/login");
+    }
+  };
+
+
   useEffect(() => {
     const fetchBook = async () => {
       try {
+        checkLoginStatus();
         const response = await fetch(`${apiUrl}/books/${bookId}`, {
           method: "GET",
           credentials: "include",
@@ -52,27 +71,6 @@ const Book = () => {
     fetchReviews(bookId);
   }, [bookId, navigate]);
 
-//   const ReadMore = ({ text, maxLength }) => {
-//     const [expanded, setExpanded] = useState(false);
-
-//     if (text.length <= maxLength) return <span>{text}</span>;
-
-//     return (
-//         <span>
-//             {expanded ? text : `${text.slice(0, maxLength)}... `}
-//             <a
-//                 href="#"
-//                 onClick={(e) => {
-//                     e.preventDefault();
-//                     setExpanded(!expanded);
-//                 }}
-//                 style={{ color: "blue", cursor: "pointer", textDecoration: "underline" }}
-//             >
-//                 {expanded ? "Show less" : "Show more"}
-//             </a>
-//         </span>
-//     );
-// };
 
   const handleRatingChange = async (newRating) => {
     setRating(newRating);
@@ -196,9 +194,7 @@ const Book = () => {
         ))}
       </div>
       </div>
-                      
-
-                      {/* Book Details */}
+            {/* Book Details */}
             <div className="details-section">
                 <h2>{book.name}</h2>
                 <a href={`/authors/${author.author_id}`}><h4>{book.author_name}</h4></a>
@@ -267,7 +263,8 @@ const Book = () => {
             </div>
             <div className="review-section" style={{ marginTop: "40px" }}>
                 <h3>📖 Reviews</h3>
-                <div className="review-form" style={{ marginTop: "40px", borderTop: "1px solid #ccc", paddingTop: "20px" }}>
+                {(loggedIn ? 
+                  <div className="review-form" style={{ marginTop: "40px", borderTop: "1px solid #ccc", paddingTop: "20px" }}>
                     <h3>{userReview ? "✏️ Edit Your Review" : "📝 Write a Review"}</h3>
                     
                     <label style={{ display: "block", marginBottom: "5px" }}>Your Rating: </label>
@@ -314,6 +311,12 @@ const Book = () => {
                       {userReview ? "Update Review" : "Submit Review"}
                     </button>
                   </div>
+                  :
+                  <div>
+                    <h3>Login to write a review</h3>
+                    <button onClick={() => navigate("/login")}>Login</button>
+                  </div>
+                  )}
                                            
 
                 {Reviews && Reviews.length > 0 ? (

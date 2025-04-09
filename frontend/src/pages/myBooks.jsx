@@ -20,12 +20,14 @@ const Books = () => {
   const [AllBooks, setAllBooks] = useState([]);
   // const [DateRead, setDateRead] = useState("");
   const [showDateInput, setShowDateInput] = useState({});
+  const [currBook, setCurrBook] = useState({});
+  const [review, setReview] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [Reviews, setReviews] = useState([]);
+  const [userReview, setUserReview] = useState(null);
+  const [reviewText, setReviewText] = useState("");
+  const [reviewRating, setReviewRating] = useState(5);
 
-
-    const [Reviews, setReviews] = useState([]);
-    const [userReview, setUserReview] = useState(null);
-    const [reviewText, setReviewText] = useState("");
-    const [reviewRating, setReviewRating] = useState(5);
   useEffect(() => {
     const checkStatus = async () => {
       try {
@@ -40,6 +42,7 @@ const Books = () => {
           fetchBooks();
           fetchAllBooks();
           fetchShelves();
+          setIsLoading(false);
         }
       } catch (error) {
         console.error("Error checking login status:", error);
@@ -48,66 +51,19 @@ const Books = () => {
     };
     checkStatus();
   }, [navigate]);
-  
-  // const fetchReviews = async (bookId) => {
-  //   try {
-  //     const res = await fetch(`${apiUrl}/get-reviews`, {
-  //       method: "POST",
-  //       headers: { "Content-Type": "application/json" },
-  //       credentials: "include",
-  //       body: JSON.stringify({ book_id: bookId }),
-  //     });
-  //     const data = await res.json();
-  //     setReviews(data.reviews);
-  //     if (res.status === 200) {
-  //       console.log(data.reviews);
-  //       setUserReview(data.userReview);
-  //       setReviewText(data.userReview ? data.userReview : "");
-  //       return data.reviews;
-  //     } else {
-  //       console.error("Error fetching reviews:", data.message);
-  //       return [];
-  //     }
-  //   } catch (error) {
-  //     console.error("Error fetching reviews:", error);
-  //     return [];
-  //   }
-  // };
-  const handleClick = (review) => {
+
+  const handleClick = (book, review) => {
     setUserReview(review);
-    setReviewText(review?.review_text || "");
+    setReview(review)
+    setCurrBook(book);
+    setReviewText(review);
     setReviewRating(review?.rating || 1); // default rating
     setshowreviewPopup(true);
   };
-  
+
   const handleClose = () => {
     setshowreviewPopup(false);
   };
-  
-  // const handleSubmitReview = async (bookid) => {
-  //   console.log("handle submit me calle", userReview);
-  //   const endpoint = userReview ? "/edit-review" : "/add-review";
-  //   const res = await fetch(`${apiUrl}${endpoint}`, {
-  //     method: "POST",
-  //     headers: { "Content-Type": "application/json" },
-  //     credentials: "include",
-  //     body: JSON.stringify({
-  //       book_id: bookid,
-  //       review_text: reviewText,
-  //       rating: reviewRating,
-  //     }),
-  //   });
-  
-  //   if (res.status === 200) {
-  //     alert(userReview ? "Review updated!" : "Review added!");
-  //     fetchBooks();
-  //     fetchAllBooks();
-  //     fetchShelves();
-  //     setshowreviewPopup(false);
-  //   } else {
-  //     alert("Error submitting review.");
-  //   }
-  // };
 
   const handleAddShelf = async () => {
     if (newShelfName.trim() === "") return;
@@ -124,7 +80,7 @@ const Books = () => {
 
       if (response.ok) {
         // Optional: Add to a list of custom shelves
-        
+
         setCustomShelves([...customShelves, { shelf_name: newShelfName }]);
         console.log("Shelf added successfully");
         console.log("shelves", customShelves);
@@ -146,7 +102,7 @@ const Books = () => {
   };
 
   const handleDateAdded = async (bookId, date) => {
-    try { 
+    try {
       const response = await fetch(`${apiUrl}/add-date-read`, {
         method: "POST",
         credentials: "include",
@@ -173,7 +129,7 @@ const Books = () => {
   };
 
   const handleShelfSort = async (shelfName) => {
-    try { 
+    try {
       const response = await fetch(`${apiUrl}/sort-shelves`, {
         method: "POST",
         credentials: "include",
@@ -196,49 +152,49 @@ const Books = () => {
   };
   const AddBooktoShelf = async (bookId) => {
     try {
-    const response = await fetch(`${apiUrl}/add-to-shelf`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ book_id: bookId, shelf_name: currentShelf }),
-    });
+      const response = await fetch(`${apiUrl}/add-to-shelf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ book_id: bookId, shelf_name: currentShelf }),
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (response.ok) {
-      if (data.message === "Already in shelf") {
-      alert("Book is already in the selected shelf.");
+      if (response.ok) {
+        if (data.message === "Already in shelf") {
+          alert("Book is already in the selected shelf.");
+        } else {
+          alert("Book added to shelf successfully!");
+
+          // Update the AllBooks state
+          setAllBooks((prevBooks) => [
+            ...prevBooks,
+            { ...totalBooks.find((book) => book.book_id === bookId), shelf_name: currentShelf },
+          ]);
+          console.log("AllBooks", AllBooks);
+          // Update the totalBooks state for specific shelves
+          if (["Currently Reading", "Want to Read", "Read"].includes(currentShelf)) {
+            setTotalBooks((prevBooks) =>
+              prevBooks.map((book) =>
+                book.book_id === bookId ? { ...book, shelf_name: currentShelf } : book
+              )
+            );
+          }
+
+          // Close the popup
+          // setShowPopup(false);
+        }
       } else {
-      alert("Book added to shelf successfully!");
-
-      // Update the AllBooks state
-      setAllBooks((prevBooks) => [
-        ...prevBooks,
-        { ...totalBooks.find((book) => book.book_id === bookId), shelf_name: currentShelf },
-      ]);
-      console.log("AllBooks", AllBooks);
-      // Update the totalBooks state for specific shelves
-      if (["Currently Reading", "Want to Read", "Read"].includes(currentShelf)) {
-        setTotalBooks((prevBooks) =>
-        prevBooks.map((book) =>
-          book.book_id === bookId ? { ...book, shelf_name: currentShelf } : book
-        )
-        );
+        console.error("Failed to add book to shelf:", data.message);
+        alert("Failed to add book to shelf.");
       }
-
-      // Close the popup
-      // setShowPopup(false);
-      }
-    } else {
-      console.error("Failed to add book to shelf:", data.message);
-      alert("Failed to add book to shelf.");
-    }
     } catch (error) {
-    console.error("Error adding book to shelf:", error);
-    alert("An error occurred while adding the book to the shelf.");
+      console.error("Error adding book to shelf:", error);
+      alert("An error occurred while adding the book to the shelf.");
     }
   };
-  
+
   const fetchBooks = async () => {
     try {
       const response = await fetch(`${apiUrl}/list-books`, {
@@ -299,54 +255,58 @@ const Books = () => {
     }
   };
 
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <>
       <Navbar />
-      
+
       <div style={{ display: "flex" }}>
         {/* Sidebar */}
-        
+
         <div style={{ width: "250px", padding: "20px", borderRight: "1px solid #ccc" }}>
-        <div style={{ marginBottom: "20px" }}>
-        <h2>Bookshelves</h2>
-        <div style={{ display: "flex", alignItems: "center", gap: "20px", flexWrap: "wrap" }}>
-          <div>
+          <div style={{ marginBottom: "20px" }}>
+            <h2>Bookshelves</h2>
+            <div style={{ display: "flex", alignItems: "center", gap: "20px", flexWrap: "wrap" }}>
+              <div>
                 <a
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
                     handleShelfSort("All");
-                    }}
+                  }}
                   style={{ color: "blue", textDecoration: "underline", cursor: "pointer" }}
                 >
                   All ({totalBooks.length})
                 </a>
               </div>
-          <div>
-                 <a
+              <div>
+                <a
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
                     handleShelfSort("Read");
-                    }}
+                  }}
                   style={{ color: "blue", textDecoration: "underline", cursor: "pointer" }}
                 >
                   Read (
-                  { 
-                  
+                  {
+
                     totalBooks.filter((book) => book.shelf_name === "Read").length
                   }
                   )
                 </a>
-            
-          </div>
-          <div>
-          <a
+
+              </div>
+              <div>
+                <a
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
                     handleShelfSort("Currently Reading");
-                    }}
+                  }}
                   style={{ color: "blue", textDecoration: "underline", cursor: "pointer" }}
                 >
                   Currently Reading (
@@ -355,16 +315,16 @@ const Books = () => {
                   }
                   )
                 </a>
-                
-            
-          </div>
-          <div>
-          <a
+
+
+              </div>
+              <div>
+                <a
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
                     handleShelfSort("Want to Read");
-                    }}
+                  }}
                   style={{ color: "blue", textDecoration: "underline", cursor: "pointer" }}
                 >
                   Want to Read (
@@ -372,81 +332,81 @@ const Books = () => {
                     totalBooks.filter((book) => book.shelf_name === "Want to Read").length
                   }
                 </a>
-            
-            )
+
+                )
+              </div>
+              {customShelves
+                .filter((shelf) => shelf.shelf_name !== "All") // Skip "All" shelf
+                .map((shelf, index) => (
+                  <div key={index}>
+                    <a
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleShelfSort(shelf.shelf_name);
+                      }}
+                      style={{ color: "blue", textDecoration: "underline", cursor: "pointer" }}
+                    >
+                      {shelf.shelf_name} (
+                      {
+                        AllBooks.filter(
+                          (book) => book.shelf_name === shelf.shelf_name
+                        ).length
+                      }
+                      )
+                    </a>
+                  </div>
+                ))}
+              <div style={{ display: "flex", alignItems: "center", gap: "20px", flexWrap: "wrap" }}>
+
+                {!showShelfInput && (
+                  <button
+                    onClick={() => setShowShelfInput(true)}
+                    style={{
+                      padding: "6px 12px",
+                      backgroundColor: "#4CAF50",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer"
+                    }}
+                  >
+                    Add shelf
+                  </button>
+                )}
+
+                {showShelfInput && (
+                  <div>
+                    <label style={{ marginRight: "8px" }}><b>Add a Shelf:</b></label>
+                    <input
+                      type="text"
+                      value={newShelfName}
+                      onChange={(e) => setNewShelfName(e.target.value)}
+                      style={{
+                        padding: "4px 8px",
+                        border: "1px solid #ccc",
+                        borderRadius: "4px",
+                        marginRight: "6px"
+                      }}
+                    />
+                    <button
+                      onClick={handleAddShelf}
+                      style={{
+                        padding: "4px 8px",
+                        backgroundColor: "#eee",
+                        border: "1px solid #ccc",
+                        borderRadius: "4px",
+                        cursor: "pointer"
+                      }}
+                    >
+                      add
+                    </button>
+                  </div>
+                )}
+              </div>
+
+            </div>
           </div>
-          {customShelves
-  .filter((shelf) => shelf.shelf_name !== "All") // Skip "All" shelf
-  .map((shelf, index) => (
-    <div key={index}>
-      <a
-        href="#"
-        onClick={(e) => {
-          e.preventDefault();
-          handleShelfSort(shelf.shelf_name);
-        }}
-        style={{ color: "blue", textDecoration: "underline", cursor: "pointer" }}
-      >
-        {shelf.shelf_name} (
-          {
-            AllBooks.filter(
-              (book) => book.shelf_name === shelf.shelf_name
-            ).length
-          }
-        )
-      </a>
-    </div>
-))}
-          <div style={{ display: "flex", alignItems: "center", gap: "20px", flexWrap: "wrap" }}>
-
-        {!showShelfInput && (
-          <button
-            onClick={() => setShowShelfInput(true)}
-            style={{
-              padding: "6px 12px",
-              backgroundColor: "#4CAF50",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer"
-            }}
-          >
-            Add shelf
-          </button>
-        )}
-
-        {showShelfInput && (
-          <div>
-            <label style={{ marginRight: "8px" }}><b>Add a Shelf:</b></label>
-            <input
-              type="text"
-              value={newShelfName}
-              onChange={(e) => setNewShelfName(e.target.value)}
-              style={{
-                padding: "4px 8px",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
-                marginRight: "6px"
-              }}
-            />
-            <button
-              onClick={handleAddShelf}
-              style={{
-                padding: "4px 8px",
-                backgroundColor: "#eee",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
-                cursor: "pointer"
-              }}
-            >
-              add
-            </button>
-          </div>
-        )}
-      </div>
-
-        </div>
-      </div>
 
           <hr />
           <h4>Your reading activity</h4>
@@ -466,89 +426,89 @@ const Books = () => {
           </ul>
         </div>
         <div style={{ position: "fixed", bottom: "20px", right: "20px" }}>
-        {currentShelf !== "All" && (
-          <button
-            onClick={() => setShowPopup(true)}
-            style={{
-              padding: "10px 20px",
-              backgroundColor: "#007BFF",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-              boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)"
-            }}
-          >
-            Add Book
-          </button>
-        )}
-        {showPopup && (
-          <div
-            style={{
-              position: "fixed",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              backgroundColor: "white",
-              padding: "20px",
-              borderRadius: "8px",
-              boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)",
-              zIndex: 1000,
-              maxHeight: "80vh",
-              overflowY: "auto",
-            }}
-          >
-            <h2>Select a Book</h2>
+          {currentShelf !== "All" && (
             <button
-              onClick={() => setShowPopup(false)}
+              onClick={() => setShowPopup(true)}
               style={{
-                position: "absolute",
-                top: "10px",
-                right: "10px",
-                backgroundColor: "red",
+                padding: "10px 20px",
+                backgroundColor: "#007BFF",
                 color: "white",
                 border: "none",
                 borderRadius: "4px",
                 cursor: "pointer",
-                padding: "5px 10px",
+                boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)"
               }}
             >
-              Close
+              Add Book
             </button>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
-              {totalBooks.map((book) => (
-                <div
-                  key={book.book_id}
-                  style={{
-                    border: "1px solid #ccc",
-                    borderRadius: "8px",
-                    padding: "10px",
-                    textAlign: "center",
-                    width: "150px",
-                  }}
-                >
-                  <a
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      AddBooktoShelf(book.book_id);
+          )}
+          {showPopup && (
+            <div
+              style={{
+                position: "fixed",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                backgroundColor: "white",
+                padding: "20px",
+                borderRadius: "8px",
+                boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)",
+                zIndex: 1000,
+                maxHeight: "80vh",
+                overflowY: "auto",
+              }}
+            >
+              <h2>Select a Book</h2>
+              <button
+                onClick={() => setShowPopup(false)}
+                style={{
+                  position: "absolute",
+                  top: "10px",
+                  right: "10px",
+                  backgroundColor: "red",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  padding: "5px 10px",
+                }}
+              >
+                Close
+              </button>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
+                {totalBooks.map((book) => (
+                  <div
+                    key={book.book_id}
+                    style={{
+                      border: "1px solid #ccc",
+                      borderRadius: "8px",
+                      padding: "10px",
+                      textAlign: "center",
+                      width: "150px",
                     }}
                   >
-                    <img
-                      src={book.image_link}
-                      alt={book.name}
-                      style={{ width: "100px", height: "150px", objectFit: "cover" }}
-                    />
-                  </a>
-                  <p style={{ margin: "10px 0 5px", fontWeight: "bold" }}>{book.name}</p>
-                  <p style={{ margin: 0, fontSize: "14px", color: "#555" }}>
-                    Author: {book.author_name}
-                  </p>
-                </div>
-              ))}
+                    <a
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        AddBooktoShelf(book.book_id);
+                      }}
+                    >
+                      <img
+                        src={book.image_link}
+                        alt={book.name}
+                        style={{ width: "100px", height: "150px", objectFit: "cover" }}
+                      />
+                    </a>
+                    <p style={{ margin: "10px 0 5px", fontWeight: "bold" }}>{book.name}</p>
+                    <p style={{ margin: 0, fontSize: "14px", color: "#555" }}>
+                      Author: {book.author_name}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
         </div>
         {/* Main Content */}
         <div style={{ flexGrow: 1, padding: "20px" }}>
@@ -579,150 +539,159 @@ const Books = () => {
             </thead>
             <tbody>
               {books.sort((a, b) => a.book_id - b.book_id).map(book => (
-                <tr key={book.book_id}>
-                  <td style={tdStyle}>
-                    <img src={book.image_link} alt={book.name} width="50" />
-                  </td>
-                  <td style={{ border: "1px solid black", padding: "8px" }}>
-                    <Link to={`/books/${book.book_id}`} style={{ color: "blue", textDecoration: "underline" }}>
-                      {book.name}
-                    </Link>
-                  </td>
+                <React.Fragment key={book.bookId}>
+                  <tr key={book.book_id}>
+                    <td style={tdStyle}>
+                      <img src={book.image_link} alt={book.name} width="50" />
+                    </td>
+                    <td style={{ border: "1px solid black", padding: "8px" }}>
+                      <Link to={`/books/${book.book_id}`} style={{ color: "blue", textDecoration: "underline" }}>
+                        {book.name}
+                      </Link>
+                    </td>
 
-                  <td style={tdStyle}>
-                  <Link to={`/authors/${book.author_id}`} style={{ color: "blue", textDecoration: "underline" }}>
-                  {book.author_name}
-                  </Link>
-                  </td>
-                  <td style={tdStyle}>{book.avg_rating}</td>
-                  <td style={tdStyle}>{book.rating}</td>
-                  {/* <td style={tdStyle}>{book.shelf_name}</td> */}
-                  <td style={tdStyle}>
-                    {
-                    [
-                      ...new Set([
-                        book.shelf_name,
-                        ...(Array.isArray(AllBooks)
-                          ? AllBooks
-                              .filter(allbook => allbook.name === book.name)
-                              .map(b => b.shelf_name)
-                          : [])
-                      ])
-                    ]
-                        .filter(Boolean) // removes undefined, null, empty strings
-                        .join(", ") || "Not Assigned"
-                    }
-                  </td>
-         
-                  <td style={tdStyle}>
-  <a
-    href="#"
-    onClick={(e) => {
-      e.preventDefault(); // Prevent page jump
-      handleClick(book.review);
-    }}
-    style={{ color: "blue", textDecoration: "underline" }}
-  >
-    {book.review ? "edit review" : "write review"}
-  </a>
-</td>
-
-{showreviewPopup && (
-  <div className="popup-overlay">
-    <div className="popup-content">
-      <h3>{book.review ? "Edit Review" : "Write Review"}</h3>
-
-      <label style={{ display: "block", marginBottom: "5px" }}>Your Rating:</label>
-      <select
-        value={reviewRating}
-        onChange={(e) => setReviewRating(parseInt(e.target.value))}
-        style={{ marginBottom: "10px" }}
-      >
-        {[1, 2, 3, 4, 5].map((r) => (
-          <option key={r} value={r}>{r}</option>
-        ))}
-      </select>
-
-      <textarea
-        value={reviewText}
-        onChange={(e) => setReviewText(e.target.value)}
-        rows="5"
-        cols="40"
-        style={{ resize: "none" }}
-      />
-
-      <div style={{ marginTop: "10px" }}>
-      <button onClick={async () => {
-                console.log("handle submit me calle", userReview);
-                const endpoint = userReview ? "/edit-review" : "/add-review";
-                const res = await fetch(`${apiUrl}${endpoint}`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  credentials: "include",
-                  body: JSON.stringify({
-                    book_id: book.book_id,
-                    review_text: reviewText,
-                    rating: reviewRating,
-                  }),
-                });
-              
-                if (res.status === 200) {
-                  alert(userReview ? "Review updated!" : "Review added!");
-                  fetchBooks();
-                  fetchAllBooks();
-                  fetchShelves();
-                  setshowreviewPopup(false);
-                } else {
-                  alert("Error submitting review.");
-                }
-              }
-            }>
-                      {book.review ? "Update Review" : "Submit Review"}
-                    </button>
-                    <button onClick={handleClose} style={{ marginLeft: "10px" }}>
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-                  <td style={tdStyle}>
-                    {book.date_read ? new Date(book.date_read).toLocaleDateString() : '—'}
-                    
-                    <button
-                      style={{
-                        marginLeft: "10px",
-                        padding: "2px 6px",
-                        fontSize: "12px",
-                        cursor: "pointer"
-                      }}
-                      onClick={() =>
-                        setShowDateInput((prev) => ({
-                          ...prev,
-                          [book.book_id]: true
-                        }))
+                    <td style={tdStyle}>
+                      <Link to={`/authors/${book.author_id}`} style={{ color: "blue", textDecoration: "underline" }}>
+                        {book.author_name}
+                      </Link>
+                    </td>
+                    <td style={tdStyle}>{book.avg_rating}</td>
+                    <td style={tdStyle}>{book.rating}</td>
+                    {/* <td style={tdStyle}>{book.shelf_name}</td> */}
+                    <td style={tdStyle}>
+                      {
+                        [
+                          ...new Set([
+                            book.shelf_name,
+                            ...(Array.isArray(AllBooks)
+                              ? AllBooks
+                                .filter(allbook => allbook.name === book.name)
+                                .map(b => b.shelf_name)
+                              : [])
+                          ])
+                        ]
+                          .filter(Boolean) // removes undefined, null, empty strings
+                          .join(", ") || "Not Assigned"
                       }
-                    >
-                      Add Date
-                    </button>
+                    </td>
 
-                    {/* This input appears ONLY for the row where book.id matches */}
-                    {showDateInput?.[book.book_id] && (
-                      <input
-                        type="date"
-                        style={{ marginLeft: "10px" }}
-                        onChange={(e) => handleDateAdded(book.book_id, e.target.value)}
-                      />
-                    )}
-                  </td>
-                  <td style={tdStyle}>
-                    {book.date_added ? new Date(book.date_added).toLocaleDateString() : '—'}
-                  </td>
-                </tr>
+                    <td style={tdStyle}>
+                      <a
+                        href="#"
+                        onClick={(e) => {
+                          // e.preventDefault(); // Prevent page jump
+                          handleClick(book, book.review);
+                        }}
+                        style={{ color: "blue", textDecoration: "underline" }}
+                      >
+                        {book.review ? "edit review" : "write review"}
+                      </a>
+                    </td>
+
+
+
+                    <td style={tdStyle}>
+                      {book.date_read ? new Date(book.date_read).toLocaleDateString() : '—'}
+
+                      <button
+                        style={{
+                          marginLeft: "10px",
+                          padding: "2px 6px",
+                          fontSize: "12px",
+                          cursor: "pointer"
+                        }}
+                        onClick={() =>
+                          setShowDateInput((prev) => ({
+                            ...prev,
+                            [book.book_id]: true
+                          }))
+                        }
+                      >
+                        Add Date
+                      </button>
+
+                      {/* This input appears ONLY for the row where book.id matches */}
+                      {showDateInput?.[book.book_id] && (
+                        <input
+                          type="date"
+                          style={{ marginLeft: "10px" }}
+                          onChange={(e) => handleDateAdded(book.book_id, e.target.value)}
+                        />
+                      )}
+                    </td>
+                    <td style={tdStyle}>
+                      {book.date_added ? new Date(book.date_added).toLocaleDateString() : '—'}
+                    </td>
+                  </tr>
+
+                </React.Fragment>
               ))}
             </tbody>
           </table>
+
+          {showreviewPopup && (
+
+            <div className="popup-overlay">
+              <div className="popup-content">
+                <h3>{currBook.review ? "Edit Review" : "Write Review"}</h3>
+
+                <label style={{ display: "block", marginBottom: "5px" }}>Your Rating:</label>
+                <select
+                  value={reviewRating}
+                  onChange={(e) => setReviewRating(parseInt(e.target.value))}
+                  style={{ marginBottom: "10px" }}
+                >
+                  {[1, 2, 3, 4, 5].map((r) => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+
+                <textarea
+                  value={reviewText}
+                  onChange={(e) => setReviewText(e.target.value)}
+                  rows="5"
+                  cols="40"
+                  style={{ resize: "none" }}
+                />
+
+                <div style={{ marginTop: "10px" }}>
+                  <button onClick={async () => {
+                    console.log("handle submit me calle", userReview);
+                    const endpoint = userReview ? "/edit-review" : "/add-review";
+                    const res = await fetch(`${apiUrl}${endpoint}`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      credentials: "include",
+                      body: JSON.stringify({
+                        book_id: currBook.book_id,
+                        review_text: reviewText,
+                        rating: reviewRating,
+                      }),
+                    });
+
+                    if (res.status === 200) {
+                      alert(userReview ? "Review updated!" : "Review added!");
+                      fetchBooks();
+                      fetchAllBooks();
+                      fetchShelves();
+                      setshowreviewPopup(false);
+                    } else {
+                      alert("Error submitting review.");
+                    }
+                  }
+                  }>
+                    {review ? "Update Review" : "Submit Review"}
+                  </button>
+                  <button onClick={handleClose} style={{ marginLeft: "10px" }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          )}
+
+
         </div>
       </div>
     </>
