@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import Navbar from "../components/Navbar";
 import { apiUrl } from "../config/config";
 import { Link } from "react-router";
+import "../css/myBooks.css";
 const Books = () => {
   const navigate = useNavigate();
 
@@ -15,9 +16,16 @@ const Books = () => {
   const [customShelves, setCustomShelves] = useState([]); // optional for future display
   const [currentShelf, setCurrentShelf] = useState("All");
   const [showPopup, setShowPopup] = useState(false);
+  const [showreviewPopup, setshowreviewPopup] = useState(false);
   const [AllBooks, setAllBooks] = useState([]);
   // const [DateRead, setDateRead] = useState("");
   const [showDateInput, setShowDateInput] = useState({});
+
+
+    const [Reviews, setReviews] = useState([]);
+    const [userReview, setUserReview] = useState(null);
+    const [reviewText, setReviewText] = useState("");
+    const [reviewRating, setReviewRating] = useState(5);
   useEffect(() => {
     const checkStatus = async () => {
       try {
@@ -41,6 +49,66 @@ const Books = () => {
     checkStatus();
   }, [navigate]);
   
+  // const fetchReviews = async (bookId) => {
+  //   try {
+  //     const res = await fetch(`${apiUrl}/get-reviews`, {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       credentials: "include",
+  //       body: JSON.stringify({ book_id: bookId }),
+  //     });
+  //     const data = await res.json();
+  //     setReviews(data.reviews);
+  //     if (res.status === 200) {
+  //       console.log(data.reviews);
+  //       setUserReview(data.userReview);
+  //       setReviewText(data.userReview ? data.userReview : "");
+  //       return data.reviews;
+  //     } else {
+  //       console.error("Error fetching reviews:", data.message);
+  //       return [];
+  //     }
+  //   } catch (error) {
+  //     console.error("Error fetching reviews:", error);
+  //     return [];
+  //   }
+  // };
+  const handleClick = (review) => {
+    setUserReview(review);
+    setReviewText(review?.review_text || "");
+    setReviewRating(review?.rating || 1); // default rating
+    setshowreviewPopup(true);
+  };
+  
+  const handleClose = () => {
+    setshowreviewPopup(false);
+  };
+  
+  // const handleSubmitReview = async (bookid) => {
+  //   console.log("handle submit me calle", userReview);
+  //   const endpoint = userReview ? "/edit-review" : "/add-review";
+  //   const res = await fetch(`${apiUrl}${endpoint}`, {
+  //     method: "POST",
+  //     headers: { "Content-Type": "application/json" },
+  //     credentials: "include",
+  //     body: JSON.stringify({
+  //       book_id: bookid,
+  //       review_text: reviewText,
+  //       rating: reviewRating,
+  //     }),
+  //   });
+  
+  //   if (res.status === 200) {
+  //     alert(userReview ? "Review updated!" : "Review added!");
+  //     fetchBooks();
+  //     fetchAllBooks();
+  //     fetchShelves();
+  //     setshowreviewPopup(false);
+  //   } else {
+  //     alert("Error submitting review.");
+  //   }
+  // };
+
   const handleAddShelf = async () => {
     if (newShelfName.trim() === "") return;
 
@@ -56,6 +124,7 @@ const Books = () => {
 
       if (response.ok) {
         // Optional: Add to a list of custom shelves
+        
         setCustomShelves([...customShelves, { shelf_name: newShelfName }]);
         console.log("Shelf added successfully");
         console.log("shelves", customShelves);
@@ -125,35 +194,50 @@ const Books = () => {
       console.error("Error sorting shelves:", error);
     }
   };
+  const AddBooktoShelf = async (bookId) => {
+    try {
+    const response = await fetch(`${apiUrl}/add-to-shelf`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ book_id: bookId, shelf_name: currentShelf }),
+    });
 
-    const AddBooktoShelf = async (bookId) => {
-  
-      const response = await fetch(`${apiUrl}/add-to-shelf`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ book_id: bookId, shelf_name: currentShelf }),
-      });
-      if(response.ok){
-        alert("Book added to shelf successfully!");
-        setAllBooks((prevBooks) =>
-          prevBooks.map((book) =>
-            book.book_id === bookId
-              ? { ...book, shelf_name: currentShelf }
-              : book
-          )
-        );
+    const data = await response.json();
+
+    if (response.ok) {
+      if (data.message === "Already in shelf") {
+      alert("Book is already in the selected shelf.");
+      } else {
+      alert("Book added to shelf successfully!");
+
+      // Update the AllBooks state
+      setAllBooks((prevBooks) => [
+        ...prevBooks,
+        { ...totalBooks.find((book) => book.book_id === bookId), shelf_name: currentShelf },
+      ]);
+      console.log("AllBooks", AllBooks);
+      // Update the totalBooks state for specific shelves
+      if (["Currently Reading", "Want to Read", "Read"].includes(currentShelf)) {
         setTotalBooks((prevBooks) =>
-          prevBooks.map((book) =>
-            book.book_id === bookId
-              ? { ...book, shelf_name: currentShelf }
-              : book
-          )
+        prevBooks.map((book) =>
+          book.book_id === bookId ? { ...book, shelf_name: currentShelf } : book
+        )
         );
-        // setShowPopup(false);
       }
 
-    };
+      // Close the popup
+      // setShowPopup(false);
+      }
+    } else {
+      console.error("Failed to add book to shelf:", data.message);
+      alert("Failed to add book to shelf.");
+    }
+    } catch (error) {
+    console.error("Error adding book to shelf:", error);
+    alert("An error occurred while adding the book to the shelf.");
+    }
+  };
   
   const fetchBooks = async () => {
     try {
@@ -224,7 +308,7 @@ const Books = () => {
         
         <div style={{ width: "250px", padding: "20px", borderRight: "1px solid #ccc" }}>
         <div style={{ marginBottom: "20px" }}>
-        <h2>Bookshelves (Edit)</h2>
+        <h2>Bookshelves</h2>
         <div style={{ display: "flex", alignItems: "center", gap: "20px", flexWrap: "wrap" }}>
           <div>
                 <a
@@ -291,24 +375,28 @@ const Books = () => {
             
             )
           </div>
-          {customShelves.map((shelf, index) => (
-                <div key={index}>
-                  <a
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleShelfSort(shelf.shelf_name);
-                  }}
-                  style={{ color: "blue", textDecoration: "underline", cursor: "pointer" }}
-                  >
-                  {shelf.shelf_name} (
-                  {
-                    AllBooks.filter((book) => book.shelf_name === shelf.shelf_name).length
-                  }
-                  )
-                  </a>
-                </div>
-                ))}
+          {customShelves
+  .filter((shelf) => shelf.shelf_name !== "All") // Skip "All" shelf
+  .map((shelf, index) => (
+    <div key={index}>
+      <a
+        href="#"
+        onClick={(e) => {
+          e.preventDefault();
+          handleShelfSort(shelf.shelf_name);
+        }}
+        style={{ color: "blue", textDecoration: "underline", cursor: "pointer" }}
+      >
+        {shelf.shelf_name} (
+          {
+            AllBooks.filter(
+              (book) => book.shelf_name === shelf.shelf_name
+            ).length
+          }
+        )
+      </a>
+    </div>
+))}
           <div style={{ display: "flex", alignItems: "center", gap: "20px", flexWrap: "wrap" }}>
 
         {!showShelfInput && (
@@ -365,7 +453,7 @@ const Books = () => {
           <ul style={{ listStyle: "none", padding: 0 }}>
             <li>Review Drafts</li>
             <li>Reading Challenge</li>
-            <li><a href="year-in-books">Year in Books</a></li>
+            <li>Year in Books</li>
             <li>Reading stats</li>
           </ul>
 
@@ -378,6 +466,7 @@ const Books = () => {
           </ul>
         </div>
         <div style={{ position: "fixed", bottom: "20px", right: "20px" }}>
+        {currentShelf !== "All" && (
           <button
             onClick={() => setShowPopup(true)}
             style={{
@@ -392,6 +481,7 @@ const Books = () => {
           >
             Add Book
           </button>
+        )}
         {showPopup && (
           <div
             style={{
@@ -452,7 +542,7 @@ const Books = () => {
                   </a>
                   <p style={{ margin: "10px 0 5px", fontWeight: "bold" }}>{book.name}</p>
                   <p style={{ margin: 0, fontSize: "14px", color: "#555" }}>
-                    Author ID: {book.author_id}
+                    Author: {book.author_name}
                   </p>
                 </div>
               ))}
@@ -462,7 +552,7 @@ const Books = () => {
         </div>
         {/* Main Content */}
         <div style={{ flexGrow: 1, padding: "20px" }}>
-          <h1>book List</h1>
+          <h1>Book Shelf : {currentShelf}</h1>
           <form onSubmit={handleSearch}>
             <input
               type="text"
@@ -477,11 +567,12 @@ const Books = () => {
             <thead>
               <tr>
                 <th style={thStyle}>Image</th>
-                <th style={thStyle}>book Name</th>
-                <th style={thStyle}>Author ID</th>
+                <th style={thStyle}>Book Title</th>
+                <th style={thStyle}>Author</th>
                 <th style={thStyle}>Average Rating</th>
                 <th style={thStyle}>Rating</th>
                 <th style={thStyle}>Shelves</th>
+                <th style={thStyle}>Review</th>
                 <th style={thStyle}>Date Read</th>
                 <th style={thStyle}>Date Added</th>
               </tr>
@@ -497,25 +588,105 @@ const Books = () => {
                       {book.name}
                     </Link>
                   </td>
-                  <td style={tdStyle}>{book.author_id}</td>
+
+                  <td style={tdStyle}>
+                  <Link to={`/authors/${book.author_id}`} style={{ color: "blue", textDecoration: "underline" }}>
+                  {book.author_name}
+                  </Link>
+                  </td>
                   <td style={tdStyle}>{book.avg_rating}</td>
                   <td style={tdStyle}>{book.rating}</td>
                   {/* <td style={tdStyle}>{book.shelf_name}</td> */}
                   <td style={tdStyle}>
                     {
-                      [
+                    [
+                      ...new Set([
                         book.shelf_name,
                         ...(Array.isArray(AllBooks)
                           ? AllBooks
                               .filter(allbook => allbook.name === book.name)
                               .map(b => b.shelf_name)
                           : [])
-                      ]
+                      ])
+                    ]
                         .filter(Boolean) // removes undefined, null, empty strings
                         .join(", ") || "Not Assigned"
                     }
                   </td>
-                  
+         
+                  <td style={tdStyle}>
+  <a
+    href="#"
+    onClick={(e) => {
+      e.preventDefault(); // Prevent page jump
+      handleClick(book.review);
+    }}
+    style={{ color: "blue", textDecoration: "underline" }}
+  >
+    {book.review ? "edit review" : "write review"}
+  </a>
+</td>
+
+{showreviewPopup && (
+  <div className="popup-overlay">
+    <div className="popup-content">
+      <h3>{book.review ? "Edit Review" : "Write Review"}</h3>
+
+      <label style={{ display: "block", marginBottom: "5px" }}>Your Rating:</label>
+      <select
+        value={reviewRating}
+        onChange={(e) => setReviewRating(parseInt(e.target.value))}
+        style={{ marginBottom: "10px" }}
+      >
+        {[1, 2, 3, 4, 5].map((r) => (
+          <option key={r} value={r}>{r}</option>
+        ))}
+      </select>
+
+      <textarea
+        value={reviewText}
+        onChange={(e) => setReviewText(e.target.value)}
+        rows="5"
+        cols="40"
+        style={{ resize: "none" }}
+      />
+
+      <div style={{ marginTop: "10px" }}>
+      <button onClick={async () => {
+                console.log("handle submit me calle", userReview);
+                const endpoint = userReview ? "/edit-review" : "/add-review";
+                const res = await fetch(`${apiUrl}${endpoint}`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  credentials: "include",
+                  body: JSON.stringify({
+                    book_id: book.book_id,
+                    review_text: reviewText,
+                    rating: reviewRating,
+                  }),
+                });
+              
+                if (res.status === 200) {
+                  alert(userReview ? "Review updated!" : "Review added!");
+                  fetchBooks();
+                  fetchAllBooks();
+                  fetchShelves();
+                  setshowreviewPopup(false);
+                } else {
+                  alert("Error submitting review.");
+                }
+              }
+            }>
+                      {book.review ? "Update Review" : "Submit Review"}
+                    </button>
+                    <button onClick={handleClose} style={{ marginLeft: "10px" }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
                   <td style={tdStyle}>
                     {book.date_read ? new Date(book.date_read).toLocaleDateString() : '—'}
                     
