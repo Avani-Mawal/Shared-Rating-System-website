@@ -21,6 +21,7 @@ const Book = () => {
     const [userReview, setUserReview] = useState(null);
     const [reviewText, setReviewText] = useState("");
     const [reviewRating, setReviewRating] = useState(5);
+    const [totalshelves, setTotalShelves] = useState([]);
   // Fetch book info
 
   const onStarClick = (star) => {
@@ -36,7 +37,7 @@ const Book = () => {
           credentials: "include",
         });
         const data = await response.json();
-        console.log(data.book);
+        // console.log(data.book);
         setBook(data.book);
         setAuthor(data.author);
         setRating(data.book.reviews|| 0);
@@ -49,6 +50,7 @@ const Book = () => {
     };
 
     fetchBook();
+    fetchShelves();
     fetchReviews(bookId);
   }, [bookId, navigate]);
 
@@ -74,11 +76,31 @@ const Book = () => {
 //     );
 // };
 
+  const fetchShelves = async () => {
+    try {
+      const response = await fetch(`${apiUrl}/get-shelves`, {
+        method: "GET",
+        credentials: "include",
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setTotalShelves(data.shelves);
+        console.log("Fetched shelves:", data.shelves);
+      } else {
+        console.error("Failed to fetch shelves");
+      }
+    } catch (error) {
+      console.error("Error fetching shelves:", error);
+    }
+  };
+
   const handleRatingChange = async (newRating) => {
     setRating(newRating);
+    console.log("bookid", bookId);
+    console.log("rating", newRating);
 
     try {
-      const response = await fetch(`${apiUrl}/rate-book`, {
+      const response = await fetch(`${apiUrl}/add-rating`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -86,7 +108,9 @@ const Book = () => {
       });
 
       if (response.ok) {
-        alert(response.json().message);
+        const result = await response.json();
+        alert(result.message);
+        
       } else {
         console.error("Failed to update rating");
       }
@@ -104,8 +128,19 @@ const Book = () => {
       credentials: "include",
       body: JSON.stringify({ book_id: bookId, shelf_name: selectedShelf }),
     });
-
-    setShelves([...shelves, { shelf_name: selectedShelf }]);
+    if (["Currently Reading", "Read", "Want to Read"].includes(selectedShelf)) {
+      console.log("checking");
+      setShelves(
+        shelves.map((shelf) =>
+          shelf.shelf_name === selectedShelf
+            ? { ...shelf, book_ids: [...(shelf.book_ids || []), bookId] }
+            : shelf
+        )
+      );
+    } else {
+      setShelves([...shelves, { shelf_name: selectedShelf }]);
+      console.log(shelves);
+    }
     setSelectedShelf("");
   };
 
@@ -134,7 +169,7 @@ const Book = () => {
       const data = await res.json();
       setReviews(data.reviews);
       if (res.status === 200) {
-        console.log(data.reviews);
+        // console.log(data.reviews);
         setUserReview(data.userReview);
         setReviewText(data.userReview ? data.userReview : "");
         return data.reviews;
@@ -218,15 +253,15 @@ const Book = () => {
                 </div>
 
                 <h3>📚 Your Shelves</h3>
-                {shelves.length > 0 ? (
-                    <ul>
-                        {shelves.map((shelf, idx) => (
-                            <li key={idx}>{shelf.shelf_name}</li>
-                        ))}
-                    </ul>
-                ) : (
-                    <p>No shelves found.</p>
-                )}
+                {[...new Set(shelves.map(s => s.shelf_name))].length > 0 ? (
+                      <ul>
+                          {[...new Set(shelves.map(s => s.shelf_name))].map((name, idx) => (
+                              <li key={idx}>{name}</li>
+                          ))}
+                      </ul>
+                  ) : (
+                      <p>No shelves found.</p>
+                  )}
 
                 <div style={{ marginTop: "10px" }}>
                     <label>Add to existing shelf: </label>
@@ -237,7 +272,7 @@ const Book = () => {
                       <option value="">-- Select --</option>
                       {[
                         ...new Set([
-                          ...(shelves || []).map(s => s.shelf_name),
+                          ...totalshelves,
                           "Currently Reading",
                           "Want to Read",
                           "Read"
