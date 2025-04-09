@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
 import { useParams } from "react-router";
+import { useNavigate } from "react-router";
 import Navbar from "../components/Navbar";
 import { apiUrl } from "../config/config";
 // import { Link } from "react-router";
@@ -10,18 +10,24 @@ const Book = () => {
   const navigate = useNavigate();
   const { bookId } = useParams(); // assuming the URL is like /books/:bookId
   const [book, setBook] = useState(null);
-  const [author, setAuthor] = useState("");
   const [shelves, setShelves] = useState([]);
   const [rating, setRating] = useState(0);
   const [selectedShelf, setSelectedShelf] = useState("");
-  const [genres, setGenres] = useState([]);
   const [newShelf, setNewShelf] = useState("");
   const [Reviews, setReviews] = useState([]);
-  const [userReview, setUserReview] = useState(null);
-  const [reviewText, setReviewText] = useState("");
-  const [reviewRating, setReviewRating] = useState(5);
-
+  const [hoveredRating, setHoveredRating] = useState(0);
+    const [genres, setGenres] = useState([]);
+    const [author, setAuthor] = useState("");
+    const [userReview, setUserReview] = useState(null);
+    const [reviewText, setReviewText] = useState("");
+    const [reviewRating, setReviewRating] = useState(5);
   // Fetch book info
+
+  const onStarClick = (star) => {
+    setRating(star);
+    handleRatingChange(star); // pass just the number, not a fake event
+  };
+
   useEffect(() => {
     const fetchBook = async () => {
       try {
@@ -30,11 +36,13 @@ const Book = () => {
           credentials: "include",
         });
         const data = await response.json();
+        console.log(data.book);
         setBook(data.book);
         setAuthor(data.author);
         setRating(data.book.reviews|| 0);
         setGenres(data.genres || []);
         setShelves(data.shelves);
+
       } catch (error) {
         console.error("Error fetching book:", error);
       }
@@ -44,39 +52,47 @@ const Book = () => {
     fetchReviews(bookId);
   }, [bookId, navigate]);
 
-  const ReadMore = ({ text, maxLength }) => {
-    const [expanded, setExpanded] = useState(false);
+//   const ReadMore = ({ text, maxLength }) => {
+//     const [expanded, setExpanded] = useState(false);
 
-    if (text.length <= maxLength) return <span>{text}</span>;
+//     if (text.length <= maxLength) return <span>{text}</span>;
 
-    return (
-        <span>
-            {expanded ? text : `${text.slice(0, maxLength)}... `}
-            <a
-                href="#"
-                onClick={(e) => {
-                    e.preventDefault();
-                    setExpanded(!expanded);
-                }}
-                style={{ color: "blue", cursor: "pointer", textDecoration: "underline" }}
-            >
-                {expanded ? "Show less" : "Show more"}
-            </a>
-        </span>
-    );
-};
+//     return (
+//         <span>
+//             {expanded ? text : `${text.slice(0, maxLength)}... `}
+//             <a
+//                 href="#"
+//                 onClick={(e) => {
+//                     e.preventDefault();
+//                     setExpanded(!expanded);
+//                 }}
+//                 style={{ color: "blue", cursor: "pointer", textDecoration: "underline" }}
+//             >
+//                 {expanded ? "Show less" : "Show more"}
+//             </a>
+//         </span>
+//     );
+// };
 
-  const handleRatingChange = async (e) => {
-    const newRating = parseInt(e.target.value);
+  const handleRatingChange = async (newRating) => {
     setRating(newRating);
 
-    await fetch(`${apiUrl}/rate-book`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ book_id: bookId, rating: newRating }),
-    });
-    alert("Rating updated successfully!");
+    try {
+      const response = await fetch(`${apiUrl}/rate-book`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ bookId: bookId, rating: newRating }),
+      });
+
+      if (response.ok) {
+        alert(response.json().message);
+      } else {
+        console.error("Failed to update rating");
+      }
+    } catch (error) {
+      console.error("Error updating rating:", error);
+    }
   };
 
   const handleShelfChange = async () => {
@@ -132,7 +148,7 @@ const Book = () => {
     }
   };
   if (!book) return <div>Loading book details...</div>;
-
+  const currentRating = rating;
   return (
     <>
         <Navbar />
@@ -141,29 +157,55 @@ const Book = () => {
             <div className="book-info">
             <div className="image-section">
                 <img src={book.image_link} alt={book.name} className="cover" />
-                <button className="button">Read</button>
-                <button className="amazon-button">Buy on Amazon</button>
-                <div className="rating">{rating.rating || "4.0"} (Rated)</div>
-                <div>
-                    <label>Rate this book: </label>
-                    <select value={rating.rating} onChange={handleRatingChange}>
-                        {[1, 2, 3, 4, 5].map((rate) => (
-                            <option key={rate} value={rate}>
+                        <button
+                          className="amazon-button"
+                          onClick={() => window.open(book.amazon_link, "_blank")}
+                        >
+                          Buy on Amazon
+                        </button>
+                        {/* <div className="rating">{rating.rating || "4.0"} (Rated)</div>
+                        <div>
+                          <label>Rate this book: </label>
+                          <select value={rating.rating} onChange={handleRatingChange}>
+                            {[1, 2, 3, 4, 5].map((rate) => (
+                              <option key={rate} value={rate}>
                                 {rate}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-            </div>
+                              </option>
+                            ))}
+                          </select>
+                        </div> */}
 
-            {/* Book Details */}
+                      </div>
+                      <div>
+        <label>Rate this book: </label>
+        <div style={{ display: "inline-flex", cursor: "pointer" }}>
+        {[1, 2, 3, 4, 5].map((star) => (
+          <span
+            key={star}
+            onClick={() => onStarClick(star)}
+            onMouseEnter={() => setHoveredRating(star)}
+            onMouseLeave={() => setHoveredRating(0)}
+            style={{
+              fontSize: "24px",
+              color: star <= (hoveredRating || currentRating) ? "#FFD700" : "#ccc",
+              transition: "color 0.2s"
+            }}
+          >
+            ★
+          </span>
+        ))}
+      </div>
+      </div>
+                      
+
+                      {/* Book Details */}
             <div className="details-section">
                 <h2>{book.name}</h2>
-                <a href={`/authors/${author.author_id}`}><h4>{author.name}</h4></a>
+                <a href={`/authors/${author.author_id}`}><h4>{book.author_name}</h4></a>
                 <p className="description">{book.description}</p>
 
                 <div className="meta-section">
-                    <p><strong>Genres:</strong> {
+                <p><strong>Genres:</strong> {
                       genres.length > 0 && 
                       genres.map((genre, idx) => (
                         <a key = {idx} href={`/genre/${genre}`}><span key={idx} className="genre">{genre}, </span></a>
@@ -192,12 +234,21 @@ const Book = () => {
                         value={selectedShelf}
                         onChange={(e) => setSelectedShelf(e.target.value)}
                     >
-                        <option value="">-- Select --</option>
-                        {["Read", "Currently Reading", "Want to Read"].map((shelf, idx) => (
-                            <option key={idx} value={shelf}>
-                                {shelf}
-                            </option>
-                        ))}
+                      <option value="">-- Select --</option>
+                      {[
+                        ...new Set([
+                          ...(shelves || []).map(s => s.shelf_name),
+                          "Currently Reading",
+                          "Want to Read",
+                          "Read"
+                        ])
+                      ]
+                        .filter(name => name !== "All")
+                        .map((shelfName) => (
+                          <option key={shelfName} value={shelfName}>
+                            {shelfName}
+                          </option>
+                      ))}
                     </select>
                     <button onClick={handleShelfChange}>Add</button>
                 </div>
@@ -263,7 +314,7 @@ const Book = () => {
                       {userReview ? "Update Review" : "Submit Review"}
                     </button>
                   </div>
-                                    
+                                           
 
                 {Reviews && Reviews.length > 0 ? (
                     Reviews.map((review, index) => (
@@ -278,12 +329,9 @@ const Book = () => {
                             <div style={{ marginTop: "5px", color: "orange" }}>
                                 {"★".repeat(Math.floor(review.rating)) + "☆".repeat(5 - Math.floor(review.rating))}
                             </div>
+
                             <div style={{ marginTop: "10px", whiteSpace: "pre-wrap" }}>
-                                {review.review_text.length > 300 ? (
-                                    <ReadMore text={review.review_text} maxLength={300} />
-                                ) : (
-                                    <>{review.review_text}</>
-                                )}
+                              {review.review_text}
                             </div>
                         </div>
                     ))
@@ -291,6 +339,7 @@ const Book = () => {
                     <p>No reviews yet for this book.</p>
                 )}
             </div>
+
         </div>
     </>
 );
