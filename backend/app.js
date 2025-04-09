@@ -234,24 +234,34 @@ app.post("/genre-books", async (req, res) => {
 // cover, title, author, avg_rating, rating, shelves, review, date_read, date_added
 app.get("/list-books", isAuthenticated, async (req, res) => {
   try {
-        const query = `SELECT 
-        nbooks.book_id,
-        nbooks.name,
-        nbooks.author_id,
-        nbooks.avg_rating,
-        nbooks.image_link,
-        bs.rating,
-        bs.shelf_name,
-        bs.date_read,
-        bs.date_added
-            FROM Books AS nbooks
-            LEFT OUTER JOIN (
-        SELECT *
-        FROM Bookshelves
-        NATURAL JOIN UserBooks
-            ) AS bs
-            ON nbooks.book_id = bs.book_id
-            WHERE bs.user_id = $1 AND bs.shelf_name IN ('Want to Read', 'Read', 'Currently Reading');`
+        const query = `
+                  SELECT 
+                    nbooks.book_id,
+                    nbooks.name,
+                    authors.author_id,
+                    authors.name AS author_name,
+                    nbooks.avg_rating,
+                    nbooks.image_link,
+                    bs.rating,
+                    bs.shelf_name,
+                    bs.date_read,
+                    bs.date_added,
+                    r.review_text as review
+                  FROM Books AS nbooks
+                  LEFT OUTER JOIN authors
+                    ON nbooks.author_id + 1 = authors.author_id
+                  LEFT OUTER JOIN (
+                    SELECT *
+                    FROM Bookshelves
+                    NATURAL JOIN UserBooks
+                  ) AS bs
+                    ON nbooks.book_id = bs.book_id
+                  LEFT OUTER JOIN reviews r
+                    ON r.book_id = nbooks.book_id AND r.user_id = bs.user_id
+                  WHERE bs.user_id = $1 
+                    AND bs.shelf_name IN ('Want to Read', 'Read', 'Currently Reading');
+                `;
+
       const result = await pool.query(query, [req.session.userId]);
     const books = result.rows;
     console.log(books);
@@ -262,25 +272,33 @@ app.get("/list-books", isAuthenticated, async (req, res) => {
   }
 });
 
+
 app.get("/list-all-books", isAuthenticated, async (req, res) => {
   try {
         const query = `SELECT 
         nbooks.book_id,
         nbooks.name,
-        nbooks.author_id,
+        authors.author_id,
+        authors.name AS author_name,
         nbooks.avg_rating,
+        nbooks.image_link,
         bs.rating,
         bs.shelf_name,
         bs.date_read,
-        bs.date_added
+        bs.date_added,
+        r.review_text as review
             FROM Books AS nbooks
+            LEFT OUTER JOIN authors
+            ON nbooks.author_id + 1 = authors.author_id
             LEFT OUTER JOIN (
         SELECT *
         FROM Bookshelves
         NATURAL JOIN UserBooks
             ) AS bs
             ON nbooks.book_id = bs.book_id
-            WHERE bs.user_id = $1 AND (bs.shelf_name IS NULL OR bs.shelf_name NOT IN ('Want to Read', 'Read', 'Currently Reading'));`
+            LEFT OUTER JOIN reviews r
+            ON r.book_id = nbooks.book_id AND r.user_id = bs.user_id
+            WHERE bs.user_id = $1 AND (bs.shelf_name IS NULL OR bs.shelf_name NOT IN ('Want to Read', 'Read', 'Currently Reading', 'All'));`
       const result = await pool.query(query, [req.session.userId]);
     const books = result.rows;
     console.log(books);
@@ -310,7 +328,23 @@ app.get("/shelves", isAuthenticated, async (req, res) => {
 app.get('/books/:bookId', async (req, res) => {
   const bookId = req.params.bookId;
   const bookQuery = await pool.query(
-    'SELECT * FROM books WHERE book_id = $1',
+    `SELECT 
+      books.book_id AS book_id,
+      books.name AS name,
+      books.isbn,
+      books.lang_code,
+      books.genre AS genre,
+      books.publ_date,
+      books.avg_rating,
+      books.image_link,
+      books.num_pages,
+      books.description,
+      authors.author_id AS author_id,
+      authors.name AS author_name,
+      authors.image_link AS author_image
+    FROM books
+    JOIN authors ON authors.author_id = books.author_id + 1
+    WHERE books.book_id = $1`,
     [bookId]
   );
   const shelvesQuery = await pool.query(
@@ -408,6 +442,13 @@ app.post("/rate-book", isAuthenticated, async (req, res) => {
       // Update existing rating
       const updateQuery = "UPDATE reviews SET rating = $1 WHERE user_id = $2 AND book_id = $3";
       await pool.query(updateQuery, [rating, userId, bookId]);
+   
+      const userBooksQuery = "SELECT * FROM userbooks WHERE user_id = $1 AND book_id = $2";
+      const userBooksResult = await pool.query(userBooksQuery, [userId, bookId]);
+      if (userBooksResult.rows.length > 0) {
+        const userBooksquery = "UPDATE userbooks set rating = $1 WHERE user_id = $2 AND book_id = $3";
+        await pool.query(userBooksquery, [rating, userId, bookId]);
+      }
     }
 
     // Update the average rating of the book
@@ -445,6 +486,7 @@ app.post("/add-date-read", isAuthenticated, async (req, res) => {
   }
 }
 );
+
 // Mugdha : regarding book-details page, Add a shelf
 app.post('/sort-shelves', async (req, res) => {
   const { shelf_name } = req.body;
@@ -456,42 +498,56 @@ app.post('/sort-shelves', async (req, res) => {
 
     if (shelf_name != "All") {
       query = `with selected_shelf as (SELECT 
-          nbooks.book_id,
-          nbooks.name,
-          nbooks.author_id,
-          nbooks.avg_rating,
-          bs.rating,
-          bs.shelf_name,
-          bs.date_read,
-          bs.date_added
-        FROM Books AS nbooks
-        LEFT OUTER JOIN (
-          SELECT *
-          FROM Bookshelves
-          NATURAL JOIN UserBooks
-        ) AS bs
-        ON nbooks.book_id = bs.book_id
-        WHERE bs.user_id = $1) select * from selected_shelf where shelf_name = $2;`;
-      result = await pool.query(query, [req.session.userId, shelf_name]);
+      nbooks.book_id,
+      nbooks.name,
+      authors.author_id,
+      authors.name AS author_name,
+      nbooks.avg_rating,
+      nbooks.image_link,
+      bs.rating,
+      bs.shelf_name,
+      bs.date_read,
+      bs.date_added,
+      r.review_text as review
+          FROM Books AS nbooks
+          LEFT OUTER JOIN authors
+          ON nbooks.author_id + 1 = authors.author_id
+          LEFT OUTER JOIN (
+      SELECT *
+      FROM Bookshelves
+      NATURAL JOIN UserBooks
+          ) AS bs
+          ON nbooks.book_id = bs.book_id
+          LEFT OUTER JOIN reviews r
+          ON r.book_id = nbooks.book_id AND r.user_id = bs.user_id
+          WHERE bs.user_id = $1) select * from selected_shelf where shelf_name = $2;`;
+     result = await pool.query(query, [req.session.userId, shelf_name]);
     } else {
       query = `SELECT 
-        nbooks.book_id,
-        nbooks.name,
-        nbooks.author_id,
-        nbooks.avg_rating,
-        bs.rating,
-        bs.shelf_name,
-        bs.date_read,
-        bs.date_added
-            FROM Books AS nbooks
-            LEFT OUTER JOIN (
-        SELECT *
-        FROM Bookshelves
-        NATURAL JOIN UserBooks
-            ) AS bs
-            ON nbooks.book_id = bs.book_id
-            WHERE bs.user_id = $1 AND bs.shelf_name IN ('Want to Read', 'Read', 'Currently Reading');`
-      result = await pool.query(query, [req.session.userId]);
+      nbooks.book_id,
+      nbooks.name,
+      authors.author_id,
+      authors.name AS author_name,
+      nbooks.avg_rating,
+      nbooks.image_link,
+      bs.rating,
+      bs.shelf_name,
+      bs.date_read,
+      bs.date_added,
+      r.review_text as review
+          FROM Books AS nbooks
+          LEFT OUTER JOIN authors
+          ON nbooks.author_id + 1 = authors.author_id
+          LEFT OUTER JOIN (
+      SELECT *
+      FROM Bookshelves
+      NATURAL JOIN UserBooks
+          ) AS bs
+          ON nbooks.book_id = bs.book_id
+          LEFT OUTER JOIN reviews r
+          ON r.book_id = nbooks.book_id AND r.user_id = bs.user_id
+          WHERE bs.user_id = $1 AND bs.shelf_name IN ('Want to Read', 'Read', 'Currently Reading');`
+    result = await pool.query(query, [req.session.userId]);
     }
 
     console.log(result.rows);
@@ -515,7 +571,14 @@ app.post('/add-to-shelf', async (req, res) => {
   const wantotreaad = "Want to Read";
   const currentlyreading = "Currently Reading";
   try {
-    // Check if the entry already exists
+
+    const ifinshelf = await pool.query('SELECT * FROM bookshelves WHERE user_id = $1 AND book_id = $2 AND shelf_name = $3', [req.session.userId, book_id, shelf_name]);
+    
+    if (ifinshelf.rows.length > 0) {
+      console.log("Already in shelf");
+      res.status(200).json({ message: "Already in shelf" });
+      return; 
+    }
     const checkQuery = 'SELECT * FROM bookshelves WHERE user_id = $1 AND book_id = $2 AND (shelf_name = $3 or shelf_name = $4 or shelf_name = $5)';
     const checkResult = await pool.query(checkQuery, [req.session.userId, book_id, read, wantotreaad, currentlyreading]);
     console.log("Check result:", checkResult.rows);
@@ -535,7 +598,7 @@ app.post('/add-to-shelf', async (req, res) => {
         }
 
         res.status(200).json({ message: "Book added to shelf successfully" });
-        return; // Ensure the function exits after sending a response
+        return; 
 
       } else {
         console.log("Updating shelf");
@@ -543,13 +606,13 @@ app.post('/add-to-shelf', async (req, res) => {
         
         const checkUserBooks = await pool.query('SELECT * FROM userbooks WHERE user_id = $1 AND book_id = $2', [req.session.userId, book_id]);
         if (checkUserBooks.rows.length == 0) {
-          const insertUserBooksQuery = 'INSERT INTO userbooks (user_id, book_id, rating) VALUES ($1, $2, 3)';
+          const insertUserBooksQuery = 'INSERT INTO userbooks (user_id, book_id) VALUES ($1, $2)';
           await pool.query(insertUserBooksQuery, [req.session.userId, book_id]);
         }
 
         await pool.query(updateQuery, [shelf_name, req.session.userId, book_id, checkResult.rows[0].shelf_name]);
         res.status(200).json({ message: "Shelf updated successfully" });
-        return; // Ensure the function exits after sending a response
+        return; 
       }
     }
     // Insert the new entry
@@ -561,7 +624,7 @@ app.post('/add-to-shelf', async (req, res) => {
         console.log("Inserting into shelf");
         await pool.query(insertQuery, [req.session.userId, book_id, shelf_name]);
         res.status(200).json({ message: "Book added to shelf successfully" });
-        return; // Ensure the function exits after sending a response
+        return; 
     } else {
       res.status(400).json({ message: "Invalid shelf name" });
       return; // Ensure the function exits after sending a response
