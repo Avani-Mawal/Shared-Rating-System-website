@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Recommendations</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <div class="nav-container">
+            <a href="/" class="logo">BookFinder</a>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="search-container">
+            <input type="text" id="searchInput" class="search-bar" placeholder="Search for a book...">
+        </div>
+
+        <div class="genre-tags">
+            {% for genre in genres %}
+            <span class="genre-tag" onclick="searchByGenre('{{ genre }}')">{{ genre }}</span>
+            {% endfor %}
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">
+            <div class="loading-spinner"></div>
+        </div>
+
+        <div id="error" class="error-message" style="display: none;"></div>
+        <div id="success" class="success-message" style="display: none;"></div>
+
+        <div class="book-grid" id="bookGrid">
+            {% for book in books %}
+            <div class="book-card">
+                <img src="{{ book.cover_url }}" alt="{{ book.name }}" class="book-cover">
+                <div class="book-info">
+                    <h3 class="book-title">{{ book.name }}</h3>
+                    <p class="book-author">{{ book.author }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        function showLoading() {
+            document.getElementById('loading').style.display = 'flex';
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('success').style.display = 'none';
+        }
+
+        function showError(message) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('error').textContent = message;
+        }
+
+        function showSuccess(message) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('success').style.display = 'block';
+            document.getElementById('success').textContent = message;
+        }
+
+        function searchByGenre(genre) {
+            showLoading();
+            fetch(`/recommend?genre=${encodeURIComponent(genre)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        showError(data.error);
+                    } else {
+                        showSuccess('Books found!');
+                        updateBookGrid(data);
+                    }
+                })
+                .catch(error => {
+                    showError('An error occurred while fetching books');
+                });
+        }
+
+        function updateBookGrid(books) {
+            const grid = document.getElementById('bookGrid');
+            grid.innerHTML = books.map(book => `
+                <div class="book-card">
+                    <img src="${book.cover_url}" alt="${book.name}" class="book-cover">
+                    <div class="book-info">
+                        <h3 class="book-title">${book.name}</h3>
+                        <p class="book-author">${book.author}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Search input handler
+        const searchInput = document.getElementById('searchInput');
+        let searchTimeout;
+
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                const query = e.target.value.trim();
+                if (query) {
+                    showLoading();
+                    fetch(`/recommend?title=${encodeURIComponent(query)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.error) {
+                                showError(data.error);
+                            } else {
+                                showSuccess('Books found!');
+                                updateBookGrid(data);
+                            }
+                        })
+                        .catch(error => {
+                            showError('An error occurred while fetching books');
+                        });
+                }
+            }, 500);
+        });
+    </script>
+</body>
+</html> 

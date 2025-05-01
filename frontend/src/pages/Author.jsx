@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router";
 import Navbar from "../components/Navbar";
 import { apiUrl } from "../config/config";
+import "../css/Author.css";
 
 const AuthorDetails = () => {
   const { authorId } = useParams();
@@ -37,121 +38,53 @@ const AuthorDetails = () => {
     fetchAuthorDetails();
   }, [authorId]);
 
-  if (loading) return <div>Loading author details...</div>;
-  if (error) return <div style={{ color: "red" }}>{error}</div>;
-  if (!author) return <div>Author not found.</div>;
+  if (loading) return <div className="loading">Loading author details...</div>;
+  if (error) return <div className="error">{error}</div>;
+  if (!author) return <div className="not-found">Author not found.</div>;
 
   return (
     <>
       <Navbar />
-      <div
-        style={{
-          maxWidth: "1000px",
-          margin: "40px auto",
-          padding: "20px",
-          backgroundColor: "#fdfaf6",
-          borderRadius: "12px",
-          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            gap: "24px",
-            alignItems: "flex-start",
-          }}
-        >
+      <div className="author-container">
+        <div className="author-header">
           {author.image_link && (
             <img
               src={author.image_link}
               alt={author.name}
-              style={{
-                width: "160px",
-                height: "200px",
-                objectFit: "cover",
-                borderRadius: "8px",
-              }}
+              className="author-image"
               onError={(e) => (e.target.style.display = "none")}
             />
           )}
-          <div>
-            <h2 style={{ marginBottom: "10px" }}>{author.name}</h2>
-            <p
-              style={{
-                fontSize: "1rem",
-                lineHeight: "1.6",
-                color: "#444",
-              }}
-            >
-              {author.bio}
-            </p>
+          <div className="author-info">
+            <h2 className="author-name">{author.name}</h2>
+            <p className="author-bio">{author.bio}</p>
           </div>
         </div>
 
-        <h3 style={{ marginTop: "40px", marginBottom: "20px" }}>
-          Books by {author.name}
-        </h3>
+        <h3 className="books-title">Books by {author.name}</h3>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
-            gap: "16px",
-          }}
-        >
+        <div className="books-grid">
           {books.length > 0 ? (
             books.map((book) => (
               <Link
                 to={`/books/${book.book_id}`}
                 key={book.book_id}
-                style={{
-                  background: "#fff",
-                  padding: "10px",
-                  borderRadius: "10px",
-                  boxShadow: "0 2px 6px rgba(0, 0, 0, 0.1)",
-                  textAlign: "center",
-                  textDecoration: "none",
-                  transition: "transform 0.2s ease",
-                }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.transform = "translateY(-4px)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.transform = "translateY(0)")
-                }
+                className="book-card"
               >
                 <img
                   src={book.image_link}
                   alt={book.name}
-                  style={{
-                    width: "100%",
-                    height: "180px",
-                    objectFit: "cover",
-                    borderRadius: "6px",
-                  }}
+                  className="book-image"
                   onError={(e) => (e.target.style.display = "none")}
                 />
-                <div
-                  style={{
-                    marginTop: "8px",
-                    fontWeight: "600",
-                    color: "#333",
-                  }}
-                >
-                  {book.name}
-                </div>
-                <div
-                  style={{
-                    fontSize: "0.85rem",
-                    color: "#666",
-                  }}
-                >
+                <div className="book-title">{book.name}</div>
+                <div className="book-rating">
                   Rating: {book.avg_rating || "N/A"}
                 </div>
               </Link>
             ))
           ) : (
-            <p>No books found for this author.</p>
+            <p className="no-books">No books found for this author.</p>
           )}
         </div>
       </div>

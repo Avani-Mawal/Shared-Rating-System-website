@@ -23,7 +23,29 @@ const Book = () => {
   const [reviewText, setReviewText] = useState("");
   const [reviewRating, setReviewRating] = useState(5);
   const [totalshelves, setTotalShelves] = useState([]);
+  const [similarBooks, setSimilarBooks] = useState([]);
   // Fetch book info
+
+  const getSimilarBooks = async (bname, bgenre) => {
+    try {
+      const response = await fetch(`${apiUrl}/get-similar-books`,{
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name : bname.name , genre : bgenre[0] }),
+      });
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      const data = await response.json();
+      setSimilarBooks(data.books);
+    } catch (error) {
+      console.error('Fetch error while getting similar books:', error);
+    }
+};
+
 
   const onStarClick = (star) => {
     setRating(star);
@@ -61,7 +83,8 @@ const Book = () => {
         setRating(data.book.reviews || 0);
         setGenres(data.genres || []);
         setShelves(data.shelves);
-
+        console.log("LLL");
+        getSimilarBooks(data.book, data.genres);
       } catch (error) {
         console.error("Error fetching book:", error);
       }
@@ -71,28 +94,6 @@ const Book = () => {
     fetchShelves();
     fetchReviews(bookId);
   }, [bookId, navigate]);
-
-  //   const ReadMore = ({ text, maxLength }) => {
-  //     const [expanded, setExpanded] = useState(false);
-
-  //     if (text.length <= maxLength) return <span>{text}</span>;
-
-  //     return (
-  //         <span>
-  //             {expanded ? text : `${text.slice(0, maxLength)}... `}
-  //             <a
-  //                 href="#"
-  //                 onClick={(e) => {
-  //                     e.preventDefault();
-  //                     setExpanded(!expanded);
-  //                 }}
-  //                 style={{ color: "blue", cursor: "pointer", textDecoration: "underline" }}
-  //             >
-  //                 {expanded ? "Show less" : "Show more"}
-  //             </a>
-  //         </span>
-  //     );
-  // };
 
   const fetchShelves = async () => {
     try {
@@ -205,7 +206,6 @@ const Book = () => {
   return (
     <>
       <Navbar />
-
       <div className="container">
         <div className="book-info">
           <div className="image-section">
@@ -216,52 +216,101 @@ const Book = () => {
             >
               Buy on Amazon
             </button>
-            {/* <div className="rating">{rating.rating || "4.0"} (Rated)</div>
-                        <div>
-                          <label>Rate this book: </label>
-                          <select value={rating.rating} onChange={handleRatingChange}>
-                            {[1, 2, 3, 4, 5].map((rate) => (
-                              <option key={rate} value={rate}>
-                                {rate}
-                              </option>
-                            ))}
-                          </select>
-                        </div> */}
+            
+            {/* Shelves section or sign-in message */}
+            {isLoggedIn ? (
+              <div className="shelves-section">
+                <h3>📚 Your Shelves</h3>
+                {[...new Set(shelves.map(s => s.shelf_name))].length > 0 ? (
+                  <ul>
+                    {[...new Set(shelves.map(s => s.shelf_name))].map((name, idx) => (
+                      <li key={idx}>{name}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>No shelves found.</p>
+                )}
 
+                <div className="shelves-controls">
+                  <div className="control-group">
+                    <label>Add to existing shelf: </label>
+                    <select
+                      value={selectedShelf}
+                      onChange={(e) => setSelectedShelf(e.target.value)}
+                    >
+                      <option value="">-- Select --</option>
+                      {[
+                        ...new Set([
+                          ...totalshelves,
+                          "Currently Reading",
+                          "Want to Read",
+                          "Read"
+                        ])
+                      ]
+                        .filter(name => name !== "All")
+                        .map((shelfName) => (
+                          <option key={shelfName} value={shelfName}>
+                            {shelfName}
+                          </option>
+                        ))}
+                    </select>
+                    <button onClick={handleShelfChange}>Add</button>
+                  </div>
+
+                  <div className="control-group">
+                    <label>Create new shelf: </label>
+                    <input
+                      type="text"
+                      value={newShelf}
+                      onChange={(e) => setNewShelf(e.target.value)}
+                      placeholder="New shelf name"
+                    />
+                    <button onClick={handleNewShelf}>Create Shelf</button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="shelves-section sign-in-prompt">
+                <p>Sign in to add this to your bookshelf!</p>
+                <button onClick={() => navigate("/login")} className="btn-signin">Sign In</button>
+              </div>
+            )}
           </div>
-          <div>
-            <label>Rate this book: </label>
-            <div style={{ display: "inline-flex", cursor: "pointer" }}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <span
-                  key={star}
-                  onClick={() => onStarClick(star)}
-                  onMouseEnter={() => setHoveredRating(star)}
-                  onMouseLeave={() => setHoveredRating(0)}
-                  style={{
-                    fontSize: "24px",
-                    color: star <= (hoveredRating || currentRating) ? "#FFD700" : "#ccc",
-                    transition: "color 0.2s"
-                  }}
-                >
-                  ★
-                </span>
-              ))}
-            </div>
-          </div>
 
-
-          {/* Book Details */}
           <div className="details-section">
             <h2>{book.name}</h2>
             <a href={`/authors/${author.author_id}`}><h4>{book.author_name}</h4></a>
             <p className="description">{book.description}</p>
 
+            <div className="rating-section">
+              <label>Rate this book: </label>
+              <div style={{ display: "inline-flex", cursor: "pointer" }}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <span
+                    key={star}
+                    onClick={() => onStarClick(star)}
+                    onMouseEnter={() => setHoveredRating(star)}
+                    onMouseLeave={() => setHoveredRating(0)}
+                    style={{
+                      fontSize: "24px",
+                      color: star <= (hoveredRating || currentRating) ? "#FFD700" : "#ccc",
+                      transition: "color 0.2s"
+                    }}
+                  >
+                    ★
+                  </span>
+                ))}
+              </div>
+            </div>
+
             <div className="meta-section">
               <p><strong>Genres:</strong> {
                 genres.length > 0 &&
                 genres.map((genre, idx) => (
-                  <a key={idx} href={`/genre/${genre}`}><span key={idx} className="genre">{genre}, </span></a>
+                  <a key={idx} href={`/genre/${genre}`}>
+                    <span className="genre">{genre}</span>
+                    {idx < genres.length - 1 ? ", " : ""}
+                  </a>
                 ))
               }</p>
               <p><strong>Pages:</strong> {book.num_pages} pages</p>
@@ -269,127 +318,123 @@ const Book = () => {
               <p><strong>ISBN:</strong> {book.isbn}</p>
               <p><strong>Language:</strong> {book.lang_code}</p>
             </div>
-
-            <h3>📚 Your Shelves</h3>
-            {[...new Set(shelves.map(s => s.shelf_name))].length > 0 ? (
-              <ul>
-                {[...new Set(shelves.map(s => s.shelf_name))].map((name, idx) => (
-                  <li key={idx}>{name}</li>
-                ))}
-              </ul>
-            ) : (
-              <p>No shelves found.</p>
-            )}
-
-            <div style={{ marginTop: "10px" }}>
-              <label>Add to existing shelf: </label>
-              <select
-                value={selectedShelf}
-                onChange={(e) => setSelectedShelf(e.target.value)}
-              >
-                <option value="">-- Select --</option>
-                {[
-                  ...new Set([
-                    ...totalshelves,
-                    "Currently Reading",
-                    "Want to Read",
-                    "Read"
-                  ])
-                ]
-                  .filter(name => name !== "All")
-                  .map((shelfName) => (
-                    <option key={shelfName} value={shelfName}>
-                      {shelfName}
-                    </option>
-                  ))}
-              </select>
-              <button onClick={handleShelfChange}>Add</button>
-            </div>
-
-            <div style={{ marginTop: "10px" }}>
-              <label>Create new shelf: </label>
-              <input
-                type="text"
-                value={newShelf}
-                onChange={(e) => setNewShelf(e.target.value)}
-                placeholder="New shelf name"
-              />
-              <button onClick={handleNewShelf}>Create Shelf</button>
-            </div>
           </div>
         </div>
-        <div className="review-section" style={{ marginTop: "40px"}}>
-          <h3>📖 Reviews</h3>
-          {isLoggedIn ? <div className="review-form" style={{ marginTop: "40px", borderTop: "1px solid #ccc", paddingTop: "20px" }}>
-            <h3>{userReview ? "✏️ Edit Your Review" : "📝 Write a Review"}</h3>
 
-            <label style={{ display: "block", marginBottom: "5px" }}>Your Rating: </label>
-            <select
-              value={reviewRating}
-              onChange={(e) => setReviewRating(parseInt(e.target.value))}
-              style={{ marginBottom: "10px" }}
-            >
-              {[1, 2, 3, 4, 5].map((r) => (
-                <option key={r} value={r}>{r}</option>
+        {/* Similar Books Section - Horizontal */}
+        <div className="similar-books-section">
+          <h3>📚 Similar Books</h3>
+          {similarBooks.length > 0 ? (
+            <div className="similar-books-container">
+              {similarBooks.map((book, index) => (
+                <a
+                  href={`/books/${book.book_id}`}
+                  key={index}
+                  className="book-card"
+                >
+                  <img src={book.image_link} alt={book.title} />
+                  <h2>{book.name}</h2>
+                  <p>{book.publ_date}</p>
+                </a>
               ))}
-            </select>
-
-            <br />
-            <textarea
-              value={reviewText}
-              onChange={(e) => setReviewText(e.target.value)}
-              placeholder="Write your thoughts..."
-              rows={5}
-              style={{ width: "100%", marginBottom: "10px" }}
-            />
-
-            <br />
-            <button onClick={async () => {
-              const endpoint = userReview ? "/edit-review" : "/add-review";
-              const res = await fetch(`${apiUrl}${endpoint}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify({
-                  book_id: bookId,
-                  review_text: reviewText,
-                  rating: reviewRating
-                }),
-              });
-
-              if (res.status === 200) {
-                alert(userReview ? "Review updated!" : "Review added!");
-                fetchReviews(bookId); // refresh the reviews list
-              } else {
-                alert("Error submitting review.");
-              }
-            }}>
-              {userReview ? "Update Review" : "Submit Review"}
-            </button>
-          </div>
-            :
-            <div>
-              <p> Login to give ratings and reviews </p>
-              <button onClick={() => navigate("/login")} style={{ background: "blue", color: "white", padding: "10px 20px", border: "none", borderRadius: "5px" }} > Login! </button>
             </div>
-          }
+          ) : (
+            <p>No similar books found.</p>
+          )}
+        </div>
 
+        {/* Reviews Section - At bottom */}
+        <div className="review-section">
+          <h3>📖 Reviews</h3>
+          {isLoggedIn ? (
+            <div className="review-form">
+              <h3>{userReview ? "✏️ Edit Your Review" : "📝 Write a Review"}</h3>
+              <label>Your Rating: </label>
+              <select
+                value={reviewRating}
+                onChange={(e) => setReviewRating(parseInt(e.target.value))}
+              >
+                {[1, 2, 3, 4, 5].map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+
+              <textarea
+                value={reviewText}
+                onChange={(e) => setReviewText(e.target.value)}
+                placeholder="Write your thoughts..."
+                rows={5}
+              />
+
+              <button onClick={async () => {
+                const endpoint = userReview ? "/edit-review" : "/add-review";
+                const res = await fetch(`${apiUrl}${endpoint}`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  credentials: "include",
+                  body: JSON.stringify({
+                    book_id: bookId,
+                    review_text: reviewText,
+                    rating: reviewRating
+                  }),
+                });
+
+                if (res.status === 200) {
+                  alert(userReview ? "Review updated!" : "Review added!");
+                  fetchReviews(bookId);
+                } else {
+                  alert("Error submitting review.");
+                }
+              }}>
+                {userReview ? "Update Review" : "Submit Review"}
+              </button>
+              {!userReview && (
+              <button
+                onClick={async () => {
+                  const res = await fetch(`${apiUrl}/save-draft`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({
+                      book_id: bookId,
+                      review_text: reviewText,
+                      rating: reviewRating,
+                    }),
+                  });
+
+                  if (res.status === 200) {
+                    alert("Draft saved!");
+                  } else {
+                    alert("Error saving draft.");
+                  }
+                }}
+              >
+                Save as Draft
+              </button>
+              )}
+            </div>
+          ) : (
+            <div className="login-prompt">
+              <p>Login to give ratings and reviews</p>
+              <button onClick={() => navigate("/login")}>Login!</button>
+            </div>
+          )}
 
           {Reviews && Reviews.length > 0 ? (
             Reviews.map((review, index) => (
-              <div key={index} className="review-card" style={{ borderBottom: "1px solid #ddd", padding: "15px 0" }}>
-                <div style={{ display: "flex", alignItems: "center" }}>
-                  <div style={{ fontWeight: "bold", marginRight: "10px" }}>{review.username}</div>
-                  <div style={{ color: "#888", fontSize: "0.9em" }}>
+              <div key={index} className="review-card">
+                <div className="review-header">
+                  <div className="reviewer-name">{review.username}</div>
+                  <div className="review-date">
                     {new Date(review.review_date).toLocaleDateString()}
                   </div>
                 </div>
 
-                <div style={{ marginTop: "5px", color: "orange" }}>
+                <div className="review-rating">
                   {"★".repeat(Math.floor(review.rating)) + "☆".repeat(5 - Math.floor(review.rating))}
                 </div>
 
-                <div style={{ marginTop: "10px", whiteSpace: "pre-wrap" }}>
+                <div className="review-text">
                   {review.review_text}
                 </div>
               </div>
@@ -398,7 +443,6 @@ const Book = () => {
             <p>No reviews yet for this book.</p>
           )}
         </div>
-
       </div>
     </>
   );

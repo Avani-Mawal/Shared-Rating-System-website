@@ -4,6 +4,7 @@ import Navbar from "../components/Navbar";
 import { apiUrl } from "../config/config";
 import { Link } from "react-router";
 import "../css/myBooks.css";
+
 const Books = () => {
   const navigate = useNavigate();
 
@@ -27,6 +28,87 @@ const Books = () => {
   const [userReview, setUserReview] = useState(null);
   const [reviewText, setReviewText] = useState("");
   const [reviewRating, setReviewRating] = useState(5);
+  const [drafts, setDrafts] = useState([]);
+  const [showDraftsPopup, setShowDraftsPopup] = useState(false);
+  const [isEditingDraft, setIsEditingDraft] = useState(false);
+  const [editingDraft, setEditingDraft] = useState(null);
+  const [editedText, setEditedText] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const draftsPerPage = 3;
+
+  const handleEditDraftClick = (draft) => {
+    setIsEditingDraft(true);
+    setEditingDraft(draft);
+    setEditedText(draft.review_text);
+  };
+  
+  const handleSaveEditedDraft = async () => {
+    try {
+      const response = await fetch(`${apiUrl}/edit-draft`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          review_id: editingDraft.review_id,
+          review_text: editedText,
+          rating: editingDraft.rating, // ✅ Add this
+        }),
+      });
+  
+      if (response.ok) {
+        alert("Draft updated successfully!");
+        setIsEditingDraft(false);
+        fetchDrafts(); // Refresh list
+      } else {
+        alert("Failed to update draft");
+      }
+    } catch (error) {
+      console.error("Error updating draft:", error);
+      alert("Error updating draft");
+    }
+  };
+
+  const handleAddReviewClick = async (draft) => {
+    try {
+      const response = await fetch(`${apiUrl}/add-review-from-drafts`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          review_id: draft.review_id,
+        }),
+      });
+  
+      if (response.ok) {
+        alert("Review added successfully!");
+        fetchDrafts(); // Refresh the drafts list
+      } else {
+        alert("Failed to add review");
+      }
+    } catch (error) {
+      console.error("Error adding review:", error);
+      alert("Error adding review");
+    }
+  };
+
+  const fetchDrafts = async () => {
+    try {
+      const response = await fetch(`${apiUrl}/list-drafts`, {
+        method: "GET",
+        credentials: "include",
+      });
+      const data = await response.json();
+      setDrafts(data.drafts || []);
+      console.log("Fetched drafts:", data.drafts);
+    } catch (error) {
+      console.error("Error fetching drafts:", error);
+    }
+  };
+  
 
   useEffect(() => {
     const checkStatus = async () => {
@@ -42,6 +124,7 @@ const Books = () => {
           fetchBooks();
           fetchAllBooks();
           fetchShelves();
+          fetchDrafts();
           setIsLoading(false);
         }
       } catch (error) {
@@ -255,6 +338,10 @@ const Books = () => {
     }
   };
 
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
   if (isLoading) {
     return <div>Loading...</div>;
   }
@@ -262,344 +349,191 @@ const Books = () => {
   return (
     <>
       <Navbar />
-
-      <div style={{ display: "flex" }}>
+      <div className="mybooks-container">
         {/* Sidebar */}
-
-        <div style={{ width: "250px", padding: "20px", borderRight: "1px solid #ccc" }}>
-          <div style={{ marginBottom: "20px" }}>
-            <h2>Bookshelves</h2>
-            <div style={{ display: "flex", alignItems: "center", gap: "20px", flexWrap: "wrap" }}>
-              <div>
+        <div className="sidebar">
+          <h2>Bookshelves</h2>
+          <div className="shelves-list">
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                handleShelfSort("All");
+              }}
+              className={`shelf-link ${currentShelf === "All" ? "active" : ""}`}
+            >
+              All <span className="shelf-count">{totalBooks.length}</span>
+            </a>
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                handleShelfSort("Read");
+              }}
+              className={`shelf-link ${currentShelf === "Read" ? "active" : ""}`}
+            >
+              Read <span className="shelf-count">{totalBooks.filter((book) => book.shelf_name === "Read").length}</span>
+            </a>
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                handleShelfSort("Currently Reading");
+              }}
+              className={`shelf-link ${currentShelf === "Currently Reading" ? "active" : ""}`}
+            >
+              Currently Reading <span className="shelf-count">{totalBooks.filter((book) => book.shelf_name === "Currently Reading").length}</span>
+            </a>
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                handleShelfSort("Want to Read");
+              }}
+              className={`shelf-link ${currentShelf === "Want to Read" ? "active" : ""}`}
+            >
+              Want to Read <span className="shelf-count">{totalBooks.filter((book) => book.shelf_name === "Want to Read").length}</span>
+            </a>
+            {customShelves
+              .filter((shelf) => shelf.shelf_name !== "All")
+              .map((shelf, index) => (
                 <a
+                  key={index}
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
-                    handleShelfSort("All");
+                    handleShelfSort(shelf.shelf_name);
                   }}
-                  style={{ color: "blue", textDecoration: "underline", cursor: "pointer" }}
+                  className={`shelf-link ${currentShelf === shelf.shelf_name ? "active" : ""}`}
                 >
-                  All ({totalBooks.length})
+                  {shelf.shelf_name} <span className="shelf-count">{AllBooks.filter((book) => book.shelf_name === shelf.shelf_name).length}</span>
                 </a>
-              </div>
-              <div>
-                <a
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleShelfSort("Read");
-                  }}
-                  style={{ color: "blue", textDecoration: "underline", cursor: "pointer" }}
-                >
-                  Read (
-                  {
-
-                    totalBooks.filter((book) => book.shelf_name === "Read").length
-                  }
-                  )
-                </a>
-
-              </div>
-              <div>
-                <a
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleShelfSort("Currently Reading");
-                  }}
-                  style={{ color: "blue", textDecoration: "underline", cursor: "pointer" }}
-                >
-                  Currently Reading (
-                  {
-                    totalBooks.filter((book) => book.shelf_name === "Currently Reading").length
-                  }
-                  )
-                </a>
-
-
-              </div>
-              <div>
-                <a
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleShelfSort("Want to Read");
-                  }}
-                  style={{ color: "blue", textDecoration: "underline", cursor: "pointer" }}
-                >
-                  Want to Read (
-                  {
-                    totalBooks.filter((book) => book.shelf_name === "Want to Read").length
-                  }
-                </a>
-
-                )
-              </div>
-              {customShelves
-                .filter((shelf) => shelf.shelf_name !== "All") // Skip "All" shelf
-                .map((shelf, index) => (
-                  <div key={index}>
-                    <a
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleShelfSort(shelf.shelf_name);
-                      }}
-                      style={{ color: "blue", textDecoration: "underline", cursor: "pointer" }}
-                    >
-                      {shelf.shelf_name} (
-                      {
-                        AllBooks.filter(
-                          (book) => book.shelf_name === shelf.shelf_name
-                        ).length
-                      }
-                      )
-                    </a>
-                  </div>
-                ))}
-              <div style={{ display: "flex", alignItems: "center", gap: "20px", flexWrap: "wrap" }}>
-
-                {!showShelfInput && (
-                  <button
-                    onClick={() => setShowShelfInput(true)}
-                    style={{
-                      padding: "6px 12px",
-                      backgroundColor: "#4CAF50",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "4px",
-                      cursor: "pointer"
-                    }}
-                  >
-                    Add shelf
-                  </button>
-                )}
-
-                {showShelfInput && (
-                  <div>
-                    <label style={{ marginRight: "8px" }}><b>Add a Shelf:</b></label>
-                    <input
-                      type="text"
-                      value={newShelfName}
-                      onChange={(e) => setNewShelfName(e.target.value)}
-                      style={{
-                        padding: "4px 8px",
-                        border: "1px solid #ccc",
-                        borderRadius: "4px",
-                        marginRight: "6px"
-                      }}
-                    />
-                    <button
-                      onClick={handleAddShelf}
-                      style={{
-                        padding: "4px 8px",
-                        backgroundColor: "#eee",
-                        border: "1px solid #ccc",
-                        borderRadius: "4px",
-                        cursor: "pointer"
-                      }}
-                    >
-                      add
-                    </button>
-                  </div>
-                )}
-              </div>
-
-            </div>
+              ))}
           </div>
 
-          <hr />
-          <h4>Your reading activity</h4>
-          <ul style={{ listStyle: "none", padding: 0 }}>
-            <li>Review Drafts</li>
-            <li>Reading Challenge</li>
-            <li>Year in Books</li>
-            <li>Reading stats</li>
-          </ul>
-
-          <hr />
-          <h4>Tools</h4>
-          <ul style={{ listStyle: "none", padding: 0 }}>
-            <li>Find duplicates</li>
-            <li>Widgets</li>
-            <li>Import and export</li>
-          </ul>
-        </div>
-        <div style={{ position: "fixed", bottom: "20px", right: "20px" }}>
-          {currentShelf !== "All" && (
-            <button
-              onClick={() => setShowPopup(true)}
-              style={{
-                padding: "10px 20px",
-                backgroundColor: "#007BFF",
-                color: "white",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-                boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)"
-              }}
-            >
-              Add Book
+          {!showShelfInput ? (
+            <button className="add-shelf-button" onClick={() => setShowShelfInput(true)}>
+              Add shelf
             </button>
-          )}
-          {showPopup && (
-            <div
-              style={{
-                position: "fixed",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                backgroundColor: "white",
-                padding: "20px",
-                borderRadius: "8px",
-                boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)",
-                zIndex: 1000,
-                maxHeight: "80vh",
-                overflowY: "auto",
-              }}
-            >
-              <h2>Select a Book</h2>
-              <button
-                onClick={() => setShowPopup(false)}
-                style={{
-                  position: "absolute",
-                  top: "10px",
-                  right: "10px",
-                  backgroundColor: "red",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  padding: "5px 10px",
-                }}
-              >
-                Close
+          ) : (
+            <div className="shelf-input-group">
+              <input
+                type="text"
+                value={newShelfName}
+                onChange={(e) => setNewShelfName(e.target.value)}
+                className="shelf-input"
+                placeholder="Enter shelf name"
+              />
+              <button className="add-shelf-button" onClick={handleAddShelf}>
+                Add
               </button>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
-                {totalBooks.map((book) => (
-                  <div
-                    key={book.book_id}
-                    style={{
-                      border: "1px solid #ccc",
-                      borderRadius: "8px",
-                      padding: "10px",
-                      textAlign: "center",
-                      width: "150px",
-                    }}
-                  >
-                    <a
-                      href="#"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        AddBooktoShelf(book.book_id);
-                      }}
-                    >
-                      <img
-                        src={book.image_link}
-                        alt={book.name}
-                        style={{ width: "100px", height: "150px", objectFit: "cover" }}
-                      />
-                    </a>
-                    <p style={{ margin: "10px 0 5px", fontWeight: "bold" }}>{book.name}</p>
-                    <p style={{ margin: 0, fontSize: "14px", color: "#555" }}>
-                      Author: {book.author_name}
-                    </p>
-                  </div>
-                ))}
-              </div>
             </div>
           )}
-        </div>
-        {/* Main Content */}
-        <div style={{ flexGrow: 1, padding: "20px" }}>
-          <h1>Book Shelf : {currentShelf}</h1>
-          <form onSubmit={handleSearch}>
-            <input
-              type="text"
-              placeholder="Search by book name..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <button type="submit">Search</button>
-          </form>
 
-          <table style={{ border: "1px solid black", borderCollapse: "collapse", width: "100%", marginTop: "20px" }}>
+          <h4>Your reading activity</h4>
+          <ul className="shelves-list">
+            <li>
+              <a href="#" className="shelf-link" onClick={(e) => {
+                e.preventDefault();
+                setShowDraftsPopup(true);
+              }}>
+                Review Drafts
+              </a>
+            </li>
+            <li><Link to="#" className="shelf-link">Reading Challenge</Link></li>
+            <li><Link to="/year-in-books" className="shelf-link">Year in Books</Link></li>
+            <li><Link to="#" className="shelf-link">Reading stats</Link></li>
+          </ul>
+
+          <h4>Tools</h4>
+          <ul className="shelves-list">
+            <li><Link to="#" className="shelf-link">Find duplicates</Link></li>
+            <li><Link to="#" className="shelf-link">Widgets</Link></li>
+            <li><Link to="#" className="shelf-link">Import and export</Link></li>
+          </ul>
+        </div>
+
+        {/* Main Content */}
+        <div className="main-content">
+          <div className="page-header">
+            <h1 className="page-title">Book Shelf: {currentShelf}</h1>
+            <form className="search-form" onSubmit={handleSearch}>
+              <input
+                type="text"
+                className="search-input"
+                placeholder="Search by book name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              <button type="submit" className="search-button">Search</button>
+            </form>
+          </div>
+
+          <table className="books-table">
             <thead>
               <tr>
-                <th style={thStyle}>Image</th>
-                <th style={thStyle}>Book Title</th>
-                <th style={thStyle}>Author</th>
-                <th style={thStyle}>Average Rating</th>
-                <th style={thStyle}>Rating</th>
-                <th style={thStyle}>Shelves</th>
-                <th style={thStyle}>Review</th>
-                <th style={thStyle}>Date Read</th>
-                <th style={thStyle}>Date Added</th>
+                <th>Image</th>
+                <th>Book Title</th>
+                <th>Author</th>
+                <th>Average Rating</th>
+                <th>Rating</th>
+                <th>Shelves</th>
+                <th>Review</th>
+                <th>Date Read</th>
+                <th>Date Added</th>
               </tr>
             </thead>
             <tbody>
               {books.sort((a, b) => a.book_id - b.book_id).map(book => (
-                <React.Fragment key={book.bookId}>
-                  <tr key={book.book_id}>
-                    <td style={tdStyle}>
-                      <img src={book.image_link} alt={book.name} width="50" />
-                    </td>
-                    <td style={{ border: "1px solid black", padding: "8px" }}>
-                      <Link to={`/books/${book.book_id}`} style={{ color: "blue", textDecoration: "underline" }}>
-                        {book.name}
-                      </Link>
-                    </td>
-
-                    <td style={tdStyle}>
-                      <Link to={`/authors/${book.author_id}`} style={{ color: "blue", textDecoration: "underline" }}>
-                        {book.author_name}
-                      </Link>
-                    </td>
-                    <td style={tdStyle}>{book.avg_rating}</td>
-                    <td style={tdStyle}>{book.rating}</td>
-                    {/* <td style={tdStyle}>{book.shelf_name}</td> */}
-                    <td style={tdStyle}>
-                      {
-                        [
-                          ...new Set([
-                            book.shelf_name,
-                            ...(Array.isArray(AllBooks)
-                              ? AllBooks
-                                .filter(allbook => allbook.name === book.name)
-                                .map(b => b.shelf_name)
-                              : [])
-                          ])
-                        ]
-                          .filter(Boolean) // removes undefined, null, empty strings
-                          .join(", ") || "Not Assigned"
-                      }
-                    </td>
-
-                    <td style={tdStyle}>
-                      <a
-                        href="#"
-                        onClick={(e) => {
-                          // e.preventDefault(); // Prevent page jump
-                          handleClick(book, book.review);
-                        }}
-                        style={{ color: "blue", textDecoration: "underline" }}
-                      >
-                        {book.review ? "edit review" : "write review"}
-                      </a>
-                    </td>
-
-
-
-                    <td style={tdStyle}>
-                      {book.date_read ? new Date(book.date_read).toLocaleDateString() : '—'}
-
+                <tr key={book.book_id}>
+                  <td>
+                    <img src={book.image_link} alt={book.name} className="book-cover" />
+                  </td>
+                  <td>
+                    <Link to={`/books/${book.book_id}`} className="book-link">
+                      {book.name}
+                    </Link>
+                  </td>
+                  <td>
+                    <Link to={`/authors/${book.author_id}`} className="book-link">
+                      {book.author_name}
+                    </Link>
+                  </td>
+                  <td>{book.avg_rating}</td>
+                  <td>{book.rating}</td>
+                  <td>
+                    {[
+                      ...new Set([
+                        book.shelf_name,
+                        ...(Array.isArray(AllBooks)
+                          ? AllBooks
+                            .filter(allbook => allbook.name === book.name)
+                            .map(b => b.shelf_name)
+                          : [])
+                      ])
+                    ]
+                      .filter(Boolean)
+                      .join(", ") || "Not Assigned"}
+                  </td>
+                  <td>
+                    <a
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleClick(book, book.review);
+                      }}
+                      className="book-link"
+                    >
+                      {book.review ? "edit review" : "write review"}
+                    </a>
+                  </td>
+                  <td>
+                    <div className="date-cell">
+                      <span className="date-text">
+                        {book.date_read ? new Date(book.date_read).toLocaleDateString() : '—'}
+                      </span>
                       <button
-                        style={{
-                          marginLeft: "10px",
-                          padding: "2px 6px",
-                          fontSize: "12px",
-                          cursor: "pointer"
-                        }}
+                        className="date-button"
                         onClick={() =>
                           setShowDateInput((prev) => ({
                             ...prev,
@@ -609,37 +543,75 @@ const Books = () => {
                       >
                         Add Date
                       </button>
-
-                      {/* This input appears ONLY for the row where book.id matches */}
                       {showDateInput?.[book.book_id] && (
                         <input
                           type="date"
-                          style={{ marginLeft: "10px" }}
+                          className="date-input"
                           onChange={(e) => handleDateAdded(book.book_id, e.target.value)}
                         />
                       )}
-                    </td>
-                    <td style={tdStyle}>
-                      {book.date_added ? new Date(book.date_added).toLocaleDateString() : '—'}
-                    </td>
-                  </tr>
-
-                </React.Fragment>
+                    </div>
+                  </td>
+                  <td>
+                    {book.date_added ? new Date(book.date_added).toLocaleDateString() : '—'}
+                  </td>
+                </tr>
               ))}
             </tbody>
           </table>
 
+          {currentShelf !== "All" && (
+            <button
+              className="add-book-button"
+              onClick={() => setShowPopup(true)}
+            >
+              Add Book
+            </button>
+          )}
+
+          {showPopup && (
+            <div className="book-modal">
+              <div className="modal-header">
+                <h2>Select a Book</h2>
+                <button
+                  className="modal-close"
+                  onClick={() => setShowPopup(false)}
+                >
+                  ×
+                </button>
+              </div>
+              <div className="books-grid">
+                {totalBooks.map((book) => (
+                  <div
+                    key={book.book_id}
+                    className="book-card"
+                    onClick={() => AddBooktoShelf(book.book_id)}
+                  >
+                    <img
+                      src={book.image_link}
+                      alt={book.name}
+                    />
+                    <div className="book-card-info">
+                      <h3 className="book-card-title">{book.name}</h3>
+                      <p className="book-card-author">{book.author_name}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {showreviewPopup && (
-
-            <div className="popup-overlay">
-              <div className="popup-content">
+            <div className="review-modal">
+              <div className="modal-header">
                 <h3>{currBook.review ? "Edit Review" : "Write Review"}</h3>
-
-                <label style={{ display: "block", marginBottom: "5px" }}>Your Rating:</label>
+                <button className="modal-close" onClick={handleClose}>×</button>
+              </div>
+              <form className="review-form">
+                <label>Your Rating:</label>
                 <select
                   value={reviewRating}
                   onChange={(e) => setReviewRating(parseInt(e.target.value))}
-                  style={{ marginBottom: "10px" }}
                 >
                   {[1, 2, 3, 4, 5].map((r) => (
                     <option key={r} value={r}>{r}</option>
@@ -647,58 +619,153 @@ const Books = () => {
                 </select>
 
                 <textarea
+                  className="review-textarea"
                   value={reviewText}
                   onChange={(e) => setReviewText(e.target.value)}
-                  rows="5"
-                  cols="40"
-                  style={{ resize: "none" }}
+                  placeholder="Write your review..."
                 />
 
-                <div style={{ marginTop: "10px" }}>
-                  <button onClick={async () => {
-                    console.log("handle submit me calle", userReview);
-                    const endpoint = userReview ? "/edit-review" : "/add-review";
-                    const res = await fetch(`${apiUrl}${endpoint}`, {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      credentials: "include",
-                      body: JSON.stringify({
-                        book_id: currBook.book_id,
-                        review_text: reviewText,
-                        rating: reviewRating,
-                      }),
-                    });
+                <div className="review-actions">
+                  <button
+                    className="review-submit"
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      const endpoint = userReview ? "/edit-review" : "/add-review";
+                      const res = await fetch(`${apiUrl}${endpoint}`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "include",
+                        body: JSON.stringify({
+                          book_id: currBook.book_id,
+                          review_text: reviewText,
+                          rating: reviewRating,
+                        }),
+                      });
 
-                    if (res.status === 200) {
-                      alert(userReview ? "Review updated!" : "Review added!");
-                      fetchBooks();
-                      fetchAllBooks();
-                      fetchShelves();
-                      setshowreviewPopup(false);
-                    } else {
-                      alert("Error submitting review.");
-                    }
-                  }
-                  }>
+                      if (res.status === 200) {
+                        alert(userReview ? "Review updated!" : "Review added!");
+                        fetchBooks();
+                        fetchAllBooks();
+                        fetchShelves();
+                        setshowreviewPopup(false);
+                      } else {
+                        alert("Error submitting review.");
+                      }
+                    }}
+                  >
                     {review ? "Update Review" : "Submit Review"}
                   </button>
-                  <button onClick={handleClose} style={{ marginLeft: "10px" }}>
+                  <button className="review-cancel" onClick={handleClose}>
                     Cancel
                   </button>
                 </div>
+              </form>
+            </div>
+          )}
+          {showDraftsPopup && (
+            <div className="popup-overlay">
+              <div className="popup-content">
+                <div className="drafts-header">
+                  <h3>Your Draft Reviews</h3>
+                  <button
+                    onClick={() => setShowDraftsPopup(false)}
+                    className="close-popup-button"
+                  >
+                    Close
+                  </button>
+                </div>
+                {drafts.length === 0 ? (
+                  <div className="no-drafts-message">
+                    <p>No drafts saved yet</p>
+                  </div>
+                ) : (
+                  <div className="drafts-container">
+                    {drafts
+                      .slice((currentPage - 1) * draftsPerPage, currentPage * draftsPerPage)
+                      .map((draft) => (
+                        editingDraft && isEditingDraft && editingDraft.review_id === draft.review_id ? (
+                          <div key={draft.review_id} className="draft-page">
+                            <div className="edit-draft-form">
+                              <h4>Editing Review for: {editingDraft.book_name}</h4>
+                              <textarea
+                                value={editedText}
+                                onChange={(e) => setEditedText(e.target.value)}
+                                className="draft-edit-textarea"
+                              />
+                              <div className="draft-edit-actions">
+                                <button
+                                  onClick={handleSaveEditedDraft}
+                                  className="save-draft-button"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  onClick={() => setIsEditingDraft(false)}
+                                  className="cancel-draft-button"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div key={draft.review_id} className="draft-page">
+                            <div className="draft-page-header">
+                              <h4>{draft.book_name}</h4>
+                              <div className="draft-rating">
+                                {"★".repeat(draft.rating) + "☆".repeat(5 - draft.rating)}
+                              </div>
+                            </div>
+                            <div className="draft-page-content">
+                              <p>{draft.review_text}</p>
+                            </div>
+                            <div className="draft-page-footer">
+                              <button
+                                onClick={() => handleEditDraftClick(draft)}
+                                className="edit-draft-button"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleAddReviewClick(draft)}
+                                className="add-review-button"
+                              >
+                                Add Review
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      ))}
+                    {drafts.length > draftsPerPage && (
+                      <div className="drafts-pagination">
+                        <button
+                          onClick={() => handlePageChange(currentPage - 1)}
+                          disabled={currentPage === 1}
+                          className="pagination-button"
+                        >
+                          Previous
+                        </button>
+                        <span className="pagination-info">
+                          Page {currentPage} of {Math.ceil(drafts.length / draftsPerPage)}
+                        </span>
+                        <button
+                          onClick={() => handlePageChange(currentPage + 1)}
+                          disabled={currentPage === Math.ceil(drafts.length / draftsPerPage)}
+                          className="pagination-button"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
-
           )}
-
-
         </div>
       </div>
     </>
   );
 };
-
-const thStyle = { border: "1px solid black", padding: "8px", backgroundColor: "#f2f2f2" };
-const tdStyle = { border: "1px solid black", padding: "8px" };
 
 export default Books;

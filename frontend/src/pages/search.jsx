@@ -2,7 +2,6 @@ import React, { useEffect, useState, use } from "react";
 import { apiUrl } from "../config/config";
 import { useLocation, useSearchParams } from "react-router";
 import Navbar from "../components/Navbar";
-// import "../css/Home.css"; // optional, reuse your styles
 
 const Search = () => {
   const [searchParams] = useSearchParams();
@@ -73,9 +72,6 @@ const Search = () => {
         )}
       </section>
 
-      <footer className="footer">
-        <p>© 2025 Goodreads Clone. All rights reserved.</p>
-      </footer>
     </div>
   );
 };

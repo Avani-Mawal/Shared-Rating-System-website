@@ -1,14 +1,34 @@
 /* Genres.css */
 
+/* Modern Genres Page Styles */
+:root {
+  --genres-primary: #2c3e50;
+  --genres-secondary: #3498db;
+  --genres-accent: #e74c3c;
+  --genres-bg: #f5f6fa;
+  --genres-white: #fff;
+  --genres-shadow: 0 2px 12px rgba(44,62,80,0.08);
+  --genres-radius: 16px;
+  --genres-transition: all 0.3s cubic-bezier(.4,0,.2,1);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--genres-bg);
+}
+
 .genres-container {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-  }
+  min-height: 100vh;
+  min-height: 100vh;
+  background: var(--genres-bg);
+  padding-top: 80px; 
+  background: var(--genres-bg);
+}
 
 .genre-main {
-  padding: 20px;
-  max-width: 1000px;
+  padding: 40px 0 0 0;
+  max-width: 1100px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -17,270 +37,357 @@
 
 .genre-header {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 36px;
 }
 
 .genre-header h1 {
-  font-size: 32px;
-  margin-bottom: 12px;
+  font-size: 2.5rem;
+  color: var(--genres-primary);
+  font-weight: 700;
+  margin-bottom: 16px;
+  letter-spacing: 1px;
 }
 
 .genre-search-form {
   display: flex;
-  justify-content: center;
-  gap: 10px;
+  align-items: center;
+  gap: 0;
+  width: 340px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(44,62,80,0.07);
+  overflow: hidden;
+  border: 1.5px solid #d0d7de;
+  height: 40px;
 }
 
 .genre-search-form input {
-  padding: 8px 12px;
-  font-size: 14px;
-  width: 250px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 0 16px;
+  font-size: 1rem;
+  height: 100%;
+  background: transparent;
+  color: #2c3e50;
+  box-shadow: none;
+  border-radius: 0;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.genre-search-form input:focus {
+  box-shadow: 0 0 0 2px #b3d8f6;
+  background: #f8f9fa;
 }
 
 .genre-search-form button {
-  padding: 8px 14px;
-  font-size: 14px;
-  background-color: #eee;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  background: var(--genres-secondary);
+  color: #fff;
+  border: none;
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 0 26px;
+  height: 100%;
+  border-radius: 0 8px 8px 0;
   cursor: pointer;
+  transition: background 0.18s;
+  box-shadow: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100px;
 }
 
-/* Centered book sections */
+.genre-search-form button:hover {
+  background: #217dbb;
+}
+
 .genre-body {
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  flex-direction: row;
+  align-items: flex-start;
   width: 100%;
+  gap: 36px;
+  margin-top: 16px;
 }
 
-/* Books by genre */
 .genre-left {
-  width: 100%;
+  flex: 2;
 }
 
 .genre-section {
-  margin-bottom: 40px;
+  background: var(--genres-white);
+  border-radius: var(--genres-radius);
+  box-shadow: var(--genres-shadow);
+  padding: 32px 28px 24px 28px;
+  margin-bottom: 36px;
+  transition: var(--genres-transition);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .genre-section h2 {
-  font-size: 22px;
-  margin-bottom: 10px;
-  text-align: center;
+  font-size: 1.3rem;
+  color: var(--genres-primary);
+  font-weight: 700;
+  margin-bottom: 18px;
+  text-align: left;
+  letter-spacing: 1px;
 }
 
 .genre-book-row {
   display: flex;
-  gap: 16px;
+  gap: 18px;
   flex-wrap: nowrap;
   overflow-x: auto;
-  justify-content: center;
-  margin-bottom: 5px;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  width: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: var(--genres-secondary) #f1f1f1;
 }
 
-.genre-book-row a img {
-  width: 120px;
-  height: 180px;
-  object-fit: cover;
-  border: 1px solid #ddd;
+.genre-book-row::-webkit-scrollbar {
+  height: 8px;
+}
+.genre-book-row::-webkit-scrollbar-thumb {
+  background: var(--genres-secondary);
+  border-radius: 4px;
+}
+.genre-book-row::-webkit-scrollbar-track {
+  background: #f1f1f1;
   border-radius: 4px;
 }
 
-.more-genre-link {
-  display: block;
-  text-align: center;
-  font-size: 14px;
-  color: #3366cc;
+.genre-book-row a img {
+  width: 110px;
+  height: 165px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1.5px solid #eaeaea;
+  box-shadow: 0 2px 8px rgba(44,62,80,0.08);
+  transition: var(--genres-transition);
+  background: #f8f9fa;
+}
+
+.genre-book-row a img:hover {
+  transform: translateY(-4px) scale(1.04);
+  box-shadow: 0 8px 24px rgba(44,62,80,0.13);
+  border-color: var(--genres-secondary);
+}
+
+.see-all-genre-btn, .more-genre-link {
+  margin-top: 10px;
+  background: var(--genres-secondary);
+  color: var(--genres-white);
+  border: none;
+  border-radius: 8px;
+  padding: 8px 22px;
+  font-size: 1rem;
+  font-weight: 500;
   text-decoration: none;
-}
-
-/* Favorite genres (optional) */
-.favorite-genres {
-  text-align: center;
-  margin: 40px 0 20px;
-}
-
-.favorite-genres h3 {
-  font-size: 16px;
-  margin-bottom: 10px;
-}
-
-.genre-list {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.genre-list p {
-  font-size: 14px;
-  margin: 4px;.genre-main {
-    padding: 20px;
-    max-width: 1000px;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-  
-  .genre-header {
-    text-align: center;
-    margin-bottom: 30px;
-  }
-  
-  .genre-header h1 {
-    font-size: 32px;
-    margin-bottom: 12px;
-  }
-  
-  .genre-search-form {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-  }
-  
-  .genre-search-form input {
-    padding: 8px 12px;
-    font-size: 14px;
-    width: 250px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-  }
-  
-  .genre-search-form button {
-    padding: 8px 14px;
-    font-size: 14px;
-    background-color: #eee;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-  
-  /* Centered book sections */
-  .genre-body {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-  }
-  
-  /* Books by genre */
-  .genre-left {
-    width: 100%;
-  }
-  
-  .genre-section {
-    margin-bottom: 40px;
-  }
-  
-  .genre-section h2 {
-    font-size: 22px;
-    margin-bottom: 10px;
-    text-align: center;
-  }
-  
-  .genre-book-row {
-    display: flex;
-    gap: 16px;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    justify-content: center;
-    margin-bottom: 5px;
-  }
-  
-  .genre-book-row a img {
-    width: 120px;
-    height: 180px;
-    object-fit: cover;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-  }
-  
-  .more-genre-link {
-    display: block;
-    text-align: center;
-    font-size: 14px;
-    color: #3366cc;
-    text-decoration: none;
-  }
-  
-  /* Favorite genres (optional) */
-  .favorite-genres {
-    text-align: center;
-    margin: 40px 0 20px;
-  }
-  
-  .favorite-genres h3 {
-    font-size: 16px;
-    margin-bottom: 10px;
-  }
-  
-  .genre-list {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-  
-  .genre-list p {
-    font-size: 14px;
-    margin: 4px;
-    cursor: pointer;
-  }
-  
-  /* Browse genres (all genres at the bottom) */
-  .browse-genres {
-    margin-top: 50px;
-    text-align: center;
-  }
-  
-  .browse-genres h3 {
-    font-size: 18px;
-    margin-bottom: 15px;
-  }
-  
-  .browse-genres .genre-list {
-    columns: 3;
-    column-gap: 30px;
-    max-width: 700px;
-    margin: 0 auto;
-  }
-  
-  .more-genres-link {
-    display: block;
-    margin-top: 10px;
-    font-size: 14px;
-    color: #3366cc;
-    text-decoration: none;
-  }
-  
   cursor: pointer;
+  transition: var(--genres-transition);
+  display: inline-block;
 }
 
-/* Browse genres (all genres at the bottom) */
+.see-all-genre-btn:hover, .more-genre-link:hover {
+  background: #217dbb;
+  color: #fff;
+  text-decoration: underline;
+}
+
+.genre-right {
+  flex: 1;
+  min-width: 220px;
+}
+
 .browse-genres {
-  margin-top: 50px;
+  background: var(--genres-white);
+  border-radius: var(--genres-radius);
+  box-shadow: var(--genres-shadow);
+  padding: 28px 18px 22px 18px;
   text-align: center;
 }
 
 .browse-genres h3 {
-  font-size: 18px;
-  margin-bottom: 15px;
+  font-size: 1.1rem;
+  color: var(--genres-primary);
+  font-weight: 700;
+  margin-bottom: 18px;
+  letter-spacing: 1px;
 }
 
 .browse-genres .genre-list {
-  columns: 3;
-  column-gap: 30px;
-  max-width: 700px;
-  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.browse-genres .genre-list a {
+  background: #f8f9fa;
+  color: var(--genres-primary);
+  border-radius: 20px;
+  padding: 7px 18px;
+  font-size: 1rem;
+  text-decoration: none;
+  font-weight: 500;
+  border: 1.2px solid #eaeaea;
+  transition: var(--genres-transition);
+  box-shadow: 0 1px 4px rgba(44,62,80,0.04);
+}
+
+.browse-genres .genre-list a:hover {
+  background: var(--genres-secondary);
+  color: var(--genres-white);
+  border-color: var(--genres-secondary);
 }
 
 .more-genres-link {
   display: block;
-  margin-top: 10px;
-  font-size: 14px;
-  color: #3366cc;
+  margin-top: 12px;
+  font-size: 1rem;
+  color: var(--genres-secondary);
   text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.more-genres-link:hover {
+  color: #217dbb;
+  text-decoration: underline;
+}
+
+/* Modal Styles */
+.ReactModal__Overlay {
+  background: rgba(44,62,80,0.18) !important;
+  z-index: 1000;
+}
+.ReactModal__Content {
+  border-radius: var(--genres-radius) !important;
+  max-width: 500px;
+  margin: auto;
+  padding: 36px 32px 28px 32px !important;
+  background: var(--genres-white) !important;
+  box-shadow: var(--genres-shadow) !important;
+  border: none !important;
+}
+.all-genres-list ul {
+  columns: 2;
+  column-gap: 30px;
+  padding: 0;
+  margin: 0 0 18px 0;
+  list-style: none;
+}
+.all-genres-list li {
+  margin-bottom: 10px;
+}
+.all-genres-list a {
+  color: var(--genres-primary);
+  text-decoration: none;
+  font-size: 1rem;
+  border-radius: 16px;
+  padding: 4px 12px;
+  transition: var(--genres-transition);
+}
+.all-genres-list a:hover {
+  background: var(--genres-secondary);
+  color: var(--genres-white);
+}
+.all-genres-list button {
+  margin-top: 10px;
+  padding: 8px 20px;
+  border: none;
+  border-radius: 8px;
+  background: var(--genres-secondary);
+  color: var(--genres-white);
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--genres-transition);
+}
+.all-genres-list button:hover {
+  background: #217dbb;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .genre-main {
+    flex-direction: column;
+    padding: 18px 0 0 0;
+  }
+  .genre-body {
+    flex-direction: column;
+    gap: 18px;
+  }
+  .genre-right {
+    min-width: 0;
+    width: 100%;
+    margin-top: 24px;
+  }
+  .genre-section {
+    padding: 18px 8px 14px 8px;
+  }
+  .genre-book-row a img {
+    width: 70px;
+    height: 100px;
+  }
+}
+@media (max-width: 600px) {
+  .genre-main {
+    padding: 8px 0 0 0;
+  }
+  .genre-header h1 {
+    font-size: 1.3rem;
+  }
+  .genre-section {
+    padding: 16px 6px 12px 6px;
+  }
+  .genre-section h2 {
+    font-size: 1.1rem;
+  }
+  .genre-book-row a img {
+    width: 70px;
+    height: 100px;
+  }
+  .browse-genres {
+    padding: 12px 4px 10px 4px;
+  }
+  .browse-genres .genre-list a {
+    font-size: 0.95rem;
+    padding: 5px 10px;
+  }
+  .all-genres-list ul {
+    columns: 1;
+  }
+}
+
+.genre-search-dropdown {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 42px;
+  background: #fff;
+  border: 1.5px solid #d0d7de;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(44,62,80,0.10);
+  width: 100%;
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.genre-search-dropdown-item {
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: 1rem;
+  color: #2c3e50;
+  transition: background 0.15s;
+}
+
+.genre-search-dropdown-item:hover {
+  background: #f5f6fa;
 }

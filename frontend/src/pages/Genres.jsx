@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { apiUrl } from "../config/config";
 import Navbar from "../components/Navbar";
 import Modal from 'react-modal';
+import { FaSearch } from 'react-icons/fa';
 import "../css/Genres.css";
 
 
@@ -13,8 +14,12 @@ const Genres = () => {
   const [genreBooks, setGenreBooks] = useState({});
   const [allGenres, setAllGenres] = useState([]);
   const [loading, setLoading] = useState(true);
-
+  const [searchResults, setSearchResults] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Track loading for both allGenres and genreBooks
+  const [genresLoaded, setGenresLoaded] = useState(false);
+  const [favGenresLoaded, setFavGenresLoaded] = useState(false);
 
   const openModal = () => {
     setIsModalOpen(true);
@@ -35,6 +40,7 @@ const Genres = () => {
             const data = await response.json();
             setAllGenres(data.genres);
             setGenreToShow(data.genres.slice(0, 10)); // Show only the first 10 genres
+            setGenresLoaded(true);
         } else {
             const errorData = await response.json();
             alert(errorData.message);
@@ -67,6 +73,7 @@ const Genres = () => {
                 if (books.status === 200) {
                     const bookData = await books.json();
                     setGenreBooks(bookData.books);
+                    setFavGenresLoaded(true);
                 } else {
                     const errorData = await books.json();
                     alert(errorData.message);
@@ -94,7 +101,6 @@ const Genres = () => {
             } else {
             getAllGenres(); // ⬅️ Fetch all genres
             getGenres(); // ⬅️ Fetch genres
-            setLoading(false); // ⬅️ Done loading, safe to show page
             }
           } catch (error) {
             console.error("Error checking login status:", error);
@@ -105,9 +111,18 @@ const Genres = () => {
         checkLoginStatus();
       }, [navigate]);
 
+  useEffect(() => {
+    if (genresLoaded && favGenresLoaded) {
+      setLoading(false);
+    }
+  }, [genresLoaded, favGenresLoaded]);
+
   const handleGenreSearch = (e) => {
     e.preventDefault();
-    alert(`Searching for genre: ${genreQuery}`);
+    const filteredGenres = allGenres.filter(genre => 
+      genre.genre_name.toLowerCase().includes(genreQuery.toLowerCase())
+    );
+    setSearchResults(filteredGenres);
   };
 
     if (loading) {
@@ -118,16 +133,58 @@ const Genres = () => {
     <div className="genres-container">
       <Navbar />
       <div className="genre-main">
-        <div className="genre-header">
-          <h1>Genres</h1>
-          <form onSubmit={handleGenreSearch} className="genre-search-form">
+        <div
+          className="genre-header"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%',
+            padding: '0',
+            marginBottom: '12px',
+            maxWidth: '100%'
+          }}
+        >
+          <h1 style={{ margin: 0 }}>Genres</h1>
+          <form onSubmit={handleGenreSearch} className="genre-search-form" style={{ position: 'relative', width: '340px', marginLeft: '32px', height: '50px' }}>
             <input
               type="text"
               value={genreQuery}
-              onChange={(e) => setGenreQuery(e.target.value)}
+              onChange={e => {
+                setGenreQuery(e.target.value);
+                if (e.target.value.length > 0) {
+                  const filtered = allGenres.filter(genre =>
+                    genre.genre_name.toLowerCase().includes(e.target.value.toLowerCase())
+                  );
+                  setSearchResults(filtered);
+                } else {
+                  setSearchResults([]);
+                }
+              }}
               placeholder="Find a genre by name"
+              autoComplete="off"
+              style={{ width: '100%' }}
             />
-            <button type="submit">Find Genre</button>
+            {genreQuery && searchResults.length > 0 && (
+              <div className="genre-search-dropdown">
+                {searchResults.map(g => (
+                  <div
+                    key={g.genre_name}
+                    className="genre-search-dropdown-item"
+                    onClick={() => {
+                      window.location.href = `/genre/${g.genre_name.toLowerCase()}`;
+                      setGenreQuery('');
+                      setSearchResults([]);
+                    }}
+                  >
+                    {g.genre_name}
+                  </div>
+                ))}
+              </div>
+            )}
+            <button type="submit" aria-label="Search">
+              <FaSearch size={18} />
+            </button>
           </form>
         </div>
 
@@ -137,8 +194,8 @@ const Genres = () => {
               <div key={genre} className="genre-section">
                 <h2>{genre.toUpperCase()}</h2>
                 <div className="genre-book-row">
-                  {books.map((book, idx) => (
-                    <a href = {`/books/${book.book_id}`}> <img key={idx} src={book.image_link} alt={book.name}
+                  {books.slice(0, 8).map((book, idx) => (
+                    <a href={`/books/${book.book_id}`} key={book.book_id}> <img src={book.image_link} alt={book.name}
                     onError={(e) => e.target.src = './Image-not-found.png'} 
                     /></a>
                   ))}

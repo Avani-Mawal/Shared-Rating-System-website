@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import Navbar from "../components/Navbar";
 import { apiUrl } from "../config/config";
 import { Link } from "react-router";
+import "../css/Dashboard.css";
 
 const Dashboard = () => {
   const navigate = useNavigate();

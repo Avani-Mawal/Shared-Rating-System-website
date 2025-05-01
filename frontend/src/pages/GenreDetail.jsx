@@ -121,8 +121,7 @@ const GenreDetail = () => {
   useEffect(() => {
     const fetchGenreData = async () => {
       try {
-        const capitalized =
-        genreName.charAt(0).toUpperCase() + genreName.slice(1)
+        const capitalized = capitalizeWords(genreName);
         // Pass an array to the API with only the genre name
         const genres = [capitalized];
         const res = await fetch(`${apiUrl}/genre-books`, {
@@ -136,7 +135,7 @@ const GenreDetail = () => {
 
         if (res.status === 200) {
             const data = await res.json();
-            if (!data.books || data.books.length === 0) {
+            if (!data.books || data.books[capitalized].length === 0) {
                 alert("No books found for this genre.");
                 return;
             }

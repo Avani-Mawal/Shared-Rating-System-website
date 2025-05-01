@@ -3,13 +3,15 @@ import { useNavigate } from "react-router";
 import { apiUrl } from "../config/config";
 import Navbar from "../components/Navbar";
 import { Link } from "react-router";
+import "../index.css";
 
 const Home = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [trendingBooks, setTrendingBooks] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(1);
   const scrollRef = useRef(null);
+  const isTransitioning = useRef(false);
 
   // Check login and redirect if logged in
   useEffect(() => {
@@ -36,7 +38,11 @@ const Home = () => {
       try {
         const response = await fetch(`${apiUrl}/top-rated-books`);
         const data = await response.json();
-        setTrendingBooks(data.books || []);
+        // Add clones at the start and end for infinite loop
+        const books = data.books || [];
+        if (books.length > 0) {
+          setTrendingBooks([books[books.length - 1], ...books, books[0]]);
+        }
       } catch (error) {
         console.error("Error fetching trending books:", error);
       }
@@ -44,60 +50,82 @@ const Home = () => {
     fetchTrending();
   }, []);
 
-  // Auto-scroll carousel
-  useEffect(() => {
-    const interval = setInterval(handleNext, 5000);
-    return () => clearInterval(interval);
-  });
-
   const scrollToIndex = (index) => {
-    if (scrollRef.current) {
+    if (scrollRef.current && !isTransitioning.current) {
+      isTransitioning.current = true;
       const container = scrollRef.current;
-      const childWidth = container.firstChild?.offsetWidth || 160;
+      const childWidth = container.firstChild?.offsetWidth || 180;
+      const gap = 16; // 1rem gap
+      const scrollPosition = (childWidth + gap) * index;
+      
       container.scrollTo({
-        left: childWidth * index,
+        left: scrollPosition,
         behavior: "smooth",
       });
+
+      // Reset transition flag after animation
+      setTimeout(() => {
+        isTransitioning.current = false;
+      }, 400); // Match the CSS transition duration
     }
   };
 
   const handleNext = () => {
-    const nextIndex = (currentIndex + 1) % trendingBooks.length;
+    if (isTransitioning.current) return;
+    const nextIndex = currentIndex + 1;
     setCurrentIndex(nextIndex);
     scrollToIndex(nextIndex);
+
+    // If we're at the last clone, jump to the real first item
+    if (nextIndex === trendingBooks.length - 1) {
+      setTimeout(() => {
+        setCurrentIndex(1);
+        scrollRef.current.scrollTo({
+          left: 0,
+          behavior: "auto",
+        });
+      }, 400); // Match the CSS transition duration
+    }
   };
 
   const handlePrev = () => {
-    const prevIndex =
-      (currentIndex - 1 + trendingBooks.length) % trendingBooks.length;
+    if (isTransitioning.current) return;
+    const prevIndex = currentIndex - 1;
     setCurrentIndex(prevIndex);
     scrollToIndex(prevIndex);
+
+    // If we're at the first clone, jump to the real last item
+    if (prevIndex === 0) {
+      setTimeout(() => {
+        setCurrentIndex(trendingBooks.length - 2);
+        scrollRef.current.scrollTo({
+          left: (trendingBooks.length - 2) * (180 + 16),
+          behavior: "auto",
+        });
+      }, 400); // Match the CSS transition duration
+    }
   };
 
+  // Auto-scroll carousel with smoother timing
+  useEffect(() => {
+    const interval = setInterval(handleNext, 6000); // Increased to 6 seconds for smoother feel
+    return () => clearInterval(interval);
+  }, [currentIndex, trendingBooks.length]);
+
   if (loading) {
-    return <div style={{ textAlign: "center", marginTop: "50px" }}>Loading...</div>;
+    return (
+      <div className="loading">
+        <div className="loading-spinner"></div>
+      </div>
+    );
   }
 
   return (
-    <div style={{ fontFamily: "sans-serif" }}>
+    <div>
       <Navbar />
 
       {/* Hero Section */}
-      <section
-        style={{
-          position: "relative",
-          height: "90vh",
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          overflow: "hidden",
-          color: "#fff",
-          textAlign: "center",
-          borderBottomLeftRadius: "50px",
-          borderBottomRightRadius: "50px",
-        }}
-      >
+      <section className="hero">
         <img
           src="/image.jpeg"
           alt="background"
@@ -111,63 +139,12 @@ const Home = () => {
             zIndex: -2,
           }}
         />
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            height: "100%",
-            width: "100%",
-            background: "linear-gradient(to top, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.3))",
-            zIndex: -1,
-          }}
-        />
-        <div
-          style={{
-            zIndex: 2,
-            maxWidth: "700px",
-            padding: "20px",
-          }}
-        >
-          <h1
-            style={{
-              fontSize: "5rem",
-              fontWeight: "bold",
-              marginBottom: "20px",
-              fontFamily: "'Comic Sans MS', cursive",
-            }}
-          >
-            Unlimited books, reviews & more
-          </h1>
-
-          <p
-            style={{
-              fontSize: "1.2rem",
-              marginBottom: "30px",
-              fontFamily: "'Cinzel', serif",
-            }}
-          >
-            Screens down, books up!
-          </p>
+        <div className="hero-content">
+          <h1>Unlimited books, reviews & more</h1>
+          <p>Screens down, books up!</p>
           <button
+            className="btn btn-primary"
             onClick={() => navigate("/signup")}
-            style={{
-              backgroundColor: "#e50914",
-              color: "white",
-              fontSize: "1.1rem",
-              padding: "12px 28px",
-              border: "none",
-              borderRadius: "5px",
-              cursor: "pointer",
-              transition: "0.3s ease",
-              boxShadow: "0 4px 14px rgba(229, 9, 20, 0.5)",
-            }}
-            onMouseOver={(e) =>
-              (e.currentTarget.style.backgroundColor = "#f6121d")
-            }
-            onMouseOut={(e) =>
-              (e.currentTarget.style.backgroundColor = "#e50914")
-            }
           >
             Join for Free
           </button>
@@ -175,155 +152,56 @@ const Home = () => {
       </section>
 
       {/* Trending Books Carousel */}
-      <section style={{ marginTop: "50px", padding: "0 20px", position: "relative" }}>
-        <h2
-          style={{
-            marginBottom: "20px",
-            color: "#333",
-            fontSize: "2.5rem",
-            fontWeight: "bold",
-            marginTop: "20px",
-            fontFamily: "'Cinzel', serif",
-          }}
+      <section className="carousel-container">
+        <h2 className="section-title">Trending</h2>
+        <button
+          className="carousel-arrow left"
+          onClick={handlePrev}
         >
-          Trending
-        </h2>
-        <div style={{ position: "relative" }}>
-          {/* Left Arrow */}
-          <button
-            onClick={handlePrev}
-            style={arrowButtonStyle("left")}
-            onMouseOver={(e) =>
-              (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.8)")
-            }
-            onMouseOut={(e) =>
-              (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.6)")
-            }
-          >
-            <LeftArrow />
-          </button>
+          <LeftArrow />
+        </button>
 
-          {/* Carousel */}
-          <div
-            ref={scrollRef}
-            style={{
-              display: "flex",
-              overflowX: "auto",
-              scrollBehavior: "smooth",
-              padding: "10px 0",
-              gap: "15px",
-              scrollbarWidth: "none",
-              msOverflowStyle: "none",
-            }}
-          >
-            {trendingBooks.map((book, index) => (
-              <div
-                key={index}
-                style={{
-                  minWidth: "160px",
-                  maxWidth: "160px",
-                  borderRadius: "8px",
-                  overflow: "hidden",
-                  backgroundColor: "#fff",
-                  boxShadow:
-                    index === currentIndex
-                      ? "0 4px 10px rgba(0, 0, 0, 0.4)"
-                      : "0 2px 5px rgba(0, 0, 0, 0.2)",
-                  transform: index === currentIndex ? "scale(1.05)" : "scale(1)",
-                  transition: "transform 0.3s, box-shadow 0.3s",
-                }}
-              >
-                <Link to={`/books/${book.book_id}`}>
-                  <img
-                    src={book.image_link}
-                    alt={book.name}
-                    style={{
-                      width: "100%",
-                      height: "240px",
-                      objectFit: "cover",
-                      display: "block",
-                    }}
-                  />
-                </Link>
-                <div
-                  style={{
-                    padding: "10px",
-                    fontWeight: "bold",
-                    fontSize: "14px",
-                  }}
-                >
-                  <Link
-                    to={`/books/${book.book_id}`}
-                    style={{ color: "blue", textDecoration: "none" }}
-                  >
-                    {book.name}
-                  </Link>
+        <div className="carousel" ref={scrollRef}>
+          {trendingBooks.map((book, index) => (
+            <div
+              key={`${book.book_id}-${index}`}
+              className={`carousel-item ${index === currentIndex ? 'active' : ''}`}
+            >
+              <Link to={`/books/${book.book_id}`}>
+                <img
+                  src={book.image_link}
+                  alt={book.name}
+                  className="book-cover"
+                />
+                <div className="book-info">
+                  <h3 className="book-title">{book.name}</h3>
+                  <p className="book-author">{book.author_name}</p>
                 </div>
-                <div
-                  style={{
-                    padding: "0 10px 10px",
-                    color: "#777",
-                    fontSize: "13px",
-                  }}
-                >
-                  Rating: {book.avg_rating}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Right Arrow */}
-          <button
-            onClick={handleNext}
-            style={arrowButtonStyle("right")}
-            onMouseOver={(e) =>
-              (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.8)")
-            }
-            onMouseOut={(e) =>
-              (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.6)")
-            }
-          >
-            <RightArrow />
-          </button>
+              </Link>
+            </div>
+          ))}
         </div>
+
+        <button
+          className="carousel-arrow right"
+          onClick={handleNext}
+        >
+          <RightArrow />
+        </button>
       </section>
     </div>
   );
 };
 
-// Arrow button styles helper
-const arrowButtonStyle = (position) => ({
-  position: "absolute",
-  top: "50%",
-  [position]: "-10px",
-  transform: "translateY(-50%)",
-  zIndex: 10,
-  backgroundColor: "rgba(0,0,0,0.6)",
-  border: "none",
-  borderRadius: "50%",
-  padding: "10px",
-  cursor: "pointer",
-  color: "#fff",
-  boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
-  transition: "background 0.3s",
-});
-
-// SVG arrows
 const LeftArrow = () => (
-  <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-    <path
-      fillRule="evenodd"
-      d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"
-    />
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
 const RightArrow = () => (
-  <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-    <path
-      fillRule="evenodd"
-      d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"
-    />
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M9 6L15 12L9 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
