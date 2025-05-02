@@ -211,6 +211,24 @@ const Books = () => {
     }
   };
 
+  const handleCompletion = async (bookname, bookauthor)  =>{
+    const response = await fetch(`${apiUrl}/send-completion-mail`, {
+      method: 'POST',
+      credentials: "include",
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name : bookname , author : bookauthor }), // or book info directly
+    });
+  
+    const result = await response.json();
+    if (result.success) {
+      alert('Email sent successfully!');
+    } else {
+      alert('Failed to send email.');
+    }
+  };
+
   const handleShelfSort = async (shelfName) => {
     try {
       const response = await fetch(`${apiUrl}/sort-shelves`, {
@@ -255,7 +273,7 @@ const Books = () => {
             ...prevBooks,
             { ...totalBooks.find((book) => book.book_id === bookId), shelf_name: currentShelf },
           ]);
-          console.log("AllBooks", AllBooks);
+          // console.log("AllBooks", AllBooks);
           // Update the totalBooks state for specific shelves
           if (["Currently Reading", "Want to Read", "Read"].includes(currentShelf)) {
             setTotalBooks((prevBooks) =>
@@ -547,7 +565,10 @@ const Books = () => {
                         <input
                           type="date"
                           className="date-input"
-                          onChange={(e) => handleDateAdded(book.book_id, e.target.value)}
+                          onChange={(e) => {
+                            handleDateAdded(book.book_id, e.target.value);
+                            handleCompletion(book.name, book.author_name);
+                          }}
                         />
                       )}
                     </div>

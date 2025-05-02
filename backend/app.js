@@ -9,6 +9,88 @@ const port = 4000;
 
 // PostgreSQL connection
 // NOTE: use YOUR postgres username and password here
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'Bookhive25@gmail.com',          // your Gmail ID
+    pass: 'mhki jjlk frwy ewnd'               // your Gmail App password (not Gmail login password)
+  }
+});
+////////////edit
+const genres = [
+  'Fiction', 'Fantasy', 'Classics', 'Young Adult', 'Audiobook', 'Romance', 'Historical Fiction',
+  'Book Club', 'Contemporary', 'Literature', 'Mystery', 'Science Fiction', 'Historical',
+  'Adventure', 'Novels', 'Childrens', 'Adult', 'Thriller', 'Nonfiction', 'Paranormal',
+  'Middle Grade', 'Humor', 'Chick Lit', 'School', 'Horror', 'Crime', 'Dystopia',
+  'Mystery Thriller', 'Science Fiction Fantasy', 'Adult Fiction', 'Vampires',
+  'Literary Fiction', 'Magic', 'Suspense', 'Realistic Fiction', 'Biography', 'Memoir',
+  'Urban Fantasy', 'Contemporary Romance', 'High Fantasy', 'Philosophy', 'Poetry', 'History',
+  'Psychology', 'Picture Books', 'Teen', 'War', 'Self Help', 'Epic Fantasy', 'Short Stories',
+  'Politics', 'Animals', 'Paranormal Romance', 'Read For School', 'Coming Of Age',
+  'Autobiography', 'Biography Memoir', 'Business', 'American', 'Gothic', 'Mental Health',
+  'Magical Realism', 'Plays'
+];
+
+const genreToIndex = {};
+const indexToGenre = {};
+
+genres.forEach((genre, idx) => {
+  genreToIndex[genre.toLowerCase()] = idx;
+});
+
+genres.forEach((genre, idx) => {
+  indexToGenre[idx] = genre.toLowerCase();
+});
+
+function getGenresFromBitmap(bitmapFromDB) {
+  const selectedGenres = [];
+  const bigBitmap = BigInt(bitmapFromDB); // Safely convert DB value to BigInt
+  
+  for (let i = 0; i < genres.length; i++) {
+    if (bigBitmap & (1n << BigInt(i))) {
+      selectedGenres.push(genres[i]);
+    }
+  }
+  
+  return selectedGenres;
+}
+
+async function sendCompletionEmail(userEmail, bookDetails) {
+  console.log("Sending email to:", userEmail);
+  console.log("Book details:", bookDetails);
+  const mailOptions = {
+    from: 'BookHive@gmail.com',
+    to: userEmail.email,
+    subject: `Congratulations on completing "${bookDetails.title}"!`,
+    html: `
+  <h1>Congratulations on Finishing Your Book!</h1>
+  <p>Hi there,</p>
+  <p>You've just completed reading <strong>${bookDetails.title}</strong> by <em>${bookDetails.author}</em> — what an achievement!</p>
+
+  <p>We hope this book took you on an incredible journey, opened up new perspectives, or simply gave you a chance to relax and enjoy a well-told story. Whether it made you laugh, cry, think, or dream — that's the magic of reading.</p>
+
+  <p>Finishing a book is always a moment worth celebrating, and we're proud to be a part of your reading journey.</p>
+
+  <blockquote style="font-style: italic; margin: 20px 0; padding: 10px 20px; background-color: #f9f9f9; border-left: 4px solid #ccc;">
+    “A reader lives a thousand lives before he dies. The man who never reads lives only one.” – George R.R. Martin
+  </blockquote>
+
+  <p>Thank you for choosing to read with us. Keep turning pages, discovering new stories, and feeding your curiosity.</p>
+
+  <p>📚 Until your next great read,<br>The BookTracker Team</p>
+`
+
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Email sent successfully:', info.response);
+  } catch (error) {
+    console.error('Error sending email:', error);
+  }
+}
+
 const pool = new Pool({
   user: 'postgres',
   host: 'localhost',
@@ -61,6 +143,17 @@ app.post('/signup', async (req, res) => {
     // console.log(req.body);
     // 
     // Check if email is already registered
+    let bitmap = 0;
+    console.log("Genres:", genres);
+    for (const genre of genres) {
+      const index = genreToIndex[genre.toLowerCase()];
+      // console.log("Index:", index);
+      if (index !== undefined) {
+        bitmap |= (1 << index);
+      } else {
+        console.warn(`Genre '${genre}' not found in genreToIndex mapping!`);
+      }
+    } 
 
     const emailCheck = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     if (emailCheck.rows.length > 0) {
@@ -76,8 +169,8 @@ app.post('/signup', async (req, res) => {
 
     // Insert user into the database
     const insertQuery = `
-      INSERT INTO users (user_id, username, email, password_hash, first_name, last_name, genres, dob)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO users (user_id, username, email, password_hash, first_name, last_name, genre_bitmap, genres, dob)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     `;
 
     await pool.query(insertQuery, [
@@ -87,7 +180,8 @@ app.post('/signup', async (req, res) => {
       hashedPassword,
       firstName,
       lastName,
-      JSON.stringify(genres), // assuming genres is an array
+      bitmap, // assuming genres is an array
+      genres,
       dob
     ]);
 
@@ -135,13 +229,26 @@ app.post("/get-similar-books", async(req, res) => {
   }
 });
 
+// app.get("/user-genres", async (req, res) => {
+//   try {
+//     const result = await pool.query('SELECT genres FROM users where user_id = $1', [req.session.userId]);
+//     const genresString = result.rows[0].genres;
+//     // console.log(genresString);
+//     const genres = JSON.parse(genresString);
+
+//     res.status(200).json({ message: "Genres fetched successfully", genres });
+//   } catch (error) {
+//     console.error("Error fetching genres:", error);
+//     res.status(500).json({ message: "Error fetching genres" });
+//   }
+// });
+
 app.get("/user-genres", async (req, res) => {
   try {
-    const result = await pool.query('SELECT genres FROM users where user_id = $1', [req.session.userId]);
-    const genresString = result.rows[0].genres;
-    // console.log(genresString);
-    const genres = JSON.parse(genresString);
-
+    const result = await pool.query('SELECT genre_bitmap FROM users where user_id = $1', [req.session.userId]);
+    console.log("bitmap:", result.rows[0].genre_bitmap);
+    const genres = getGenresFromBitmap(result.rows[0].genre_bitmap);
+    console.log("User genres:", genres);
     res.status(200).json({ message: "Genres fetched successfully", genres });
   } catch (error) {
     console.error("Error fetching genres:", error);
@@ -149,29 +256,29 @@ app.get("/user-genres", async (req, res) => {
   }
 });
 
+
 app.post("/update-fav", async (req, res) => {
   const { genre, action } = req.body;
   const userId = req.session.userId;
   try {
     // Fetch the user's current genres
-    const result = await pool.query('SELECT genres FROM users WHERE user_id = $1', [userId]);
-    const genresString = result.rows[0]?.genres || "[]";
-    let genres = JSON.parse(genresString);
+    const result = await pool.query('SELECT genre_bitmap FROM users WHERE user_id = $1', [userId]);
+    // const genresString = result.rows[0]?.genres || "[]";
+
+    let new_map = result.rows[0].genre_bitmap; // Start from current bitmap
 
     if (action === 1) {
-      // Add genre to favorites if not already present
-      if (!genres.includes(genre)) {
-        genres.push(genre);
-      }
+      new_map = new_map | (1 << genreToIndex[genre.toLowerCase()]); // Set the bit
+
     } else if (action === 0) {
       // Remove genre from favorites
-      genres = genres.filter((g) => g !== genre);
+      new_map = new_map & ~(1 << genreToIndex[genre.toLowerCase()]); // Clear the bit
     } else {
       return res.status(400).json({ message: "Invalid action" });
     }
 
-    // Update the user's genres in the database
-    await pool.query('UPDATE users SET genres = $1 WHERE user_id = $2', [JSON.stringify(genres), userId]);
+   // Update the user's genres in the database
+    await pool.query('UPDATE users SET genre_bitmap = $1 WHERE user_id = $2', [new_map, userId]);
 
     res.status(200).json({ message: "Favorites updated successfully", genres });
   } catch (error) {
@@ -234,9 +341,13 @@ app.post("/genre-books", async (req, res) => {
   const { genres } = req.body;
   try {
     let books = {};
+    
     for (let i = 0; i < genres.length; i++) {
-      const query = "SELECT * FROM books WHERE genre LIKE $1 ORDER BY publ_date DESC";
-      const result = await pool.query(query, [`%${genres[i]}%`]);
+      const genreName = genres[i];
+      const index = genreToIndex[genreName.toLowerCase()];
+      const bitmask = 1 << index; // Calculate the bitmask for that genre
+      const query = "SELECT * FROM books WHERE (genre_bitmap & $1) != 0 ORDER BY publ_date DESC";
+      const result = await pool.query(query, [bitmask]);
       if (result.rows.length !== 0) {
         books[genres[i]] = result.rows;
       }
@@ -247,6 +358,7 @@ app.post("/genre-books", async (req, res) => {
     res.status(500).json({ message: "Error fetching books" });
   }
 });
+
 
 ////////////////////////////////////////////////////
 // Mugdha : Using this API to list books in bookshelves
@@ -352,7 +464,7 @@ app.get('/books/:bookId', async (req, res) => {
         books.name AS name,
         books.isbn,
         books.lang_code,
-        books.genre AS genre,
+        books.genre_bitmap AS genre,
         books.publ_date,
         books.avg_rating,
         books.image_link,
@@ -380,7 +492,10 @@ app.get('/books/:bookId', async (req, res) => {
       [(bookQuery.rows[0].author_id)]
     );
 
-    genres = JSON.parse(bookQuery.rows[0].genre.replace(/'/g, '"'));
+    // console.log("Book ID:", bookQuery.rows[0].author_id + 1);
+    // console.log("Author", authorQuery.rows[0]);
+    // console.log("Book", bookQuery.rows[0]);
+    let genres = getGenresFromBitmap(bookQuery.rows[0].genre);
     res.json({
       book: {
         ...bookQuery.rows[0],
@@ -390,7 +505,7 @@ app.get('/books/:bookId', async (req, res) => {
       author: authorQuery.rows[0],
       shelves: shelvesQuery.rows,
     });
-  }
+    }
   catch (error){
     console.log("Error getting books page : ", error);
   }
@@ -989,82 +1104,6 @@ app.post("/genre-description", async (req, res) => {
   }
 });
 
-// APIs for placing order and getting confirmation
-// TODO: Implement place-order API, which updates the order,orderitems,cart,orderaddress tables
-app.post("/place-order", isAuthenticated, async (req, res) => {
-  const user_id = req.session.userId;
-  const { street, city, state, pincode } = req.body.address;
-  // console.log(req.body);
-  try {
-    const check_query = "SELECT * FROM Cart, Products WHERE user_id = $1 AND item_id = product_id AND stock_quantity < quantity";
-    const result = await pool.query(check_query, [user_id]);
-    if (result.rows.length !== 0) {
-      const item = result.rows[0];
-      return res.status(400).json({ message: `Insufficient stock for ${item.name}` });
-    }
-
-    const query = "SELECT * FROM Cart, Products WHERE user_id = $1 AND item_id = product_id ORDER BY item_id";
-    const cart = await pool.query(query, [user_id]);
-
-    const order_date = new Date();
-    const total_amount = await pool.query('SELECT SUM(price * quantity) FROM Cart, Products WHERE user_id = $1 AND item_id = product_id', [user_id]);
-
-    const insert_query = "INSERT INTO orders (order_id, user_id, order_date, total_amount) VALUES ((SELECT COUNT(*) + 1 FROM orders), $1, $2, $3) RETURNING order_id";
-
-    const order_result = await pool.query(insert_query, [user_id, order_date, total_amount.rows[0].sum]);
-    const order_id = order_result.rows[0].order_id;
-
-    const insert_query2 = "INSERT INTO orderitems (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)";
-    if (cart.rows.length === 0) {
-      return res.status(400).json({ message: "Cart is empty" });
-    }
-
-    for (let i = 0; i < cart.rows.length; i++) {
-      await pool.query(insert_query2, [order_id, cart.rows[i].item_id, cart.rows[i].quantity, cart.rows[i].price * cart.rows[i].quantity]);
-    }
-
-    const reduce_stock = "UPDATE products SET stock_quantity = stock_quantity - (SELECT quantity FROM cart WHERE user_id = $1 AND item_id = product_id) WHERE product_id = (SELECT item_id FROM cart WHERE user_id = $1 AND item_id = product_id)";
-    await pool.query(reduce_stock, [user_id]);
-
-    const delete_query = "DELETE FROM cart WHERE user_id = $1";
-    await pool.query(delete_query, [user_id]);
-    // console.log(street, city, state, pincode);
-    const insert_address_query = "INSERT INTO OrderAddress (order_id, street, city, state, pincode) VALUES ($1, $2, $3, $4, $5)";
-    await pool.query(insert_address_query, [order_id, street, city, state, pincode]);
-
-    // console.log("hi sansku");
-    res.status(200).json({ message: "Order placed successfully" });
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error placing order" });
-  }
-});
-
-// API for order confirmation
-// TODO: same as lab4
-app.get("/order-confirmation", isAuthenticated, async (req, res) => {
-  const user_id = req.session.userId;
-  try {
-    const order_query = "SELECT * FROM orders WHERE user_id = $1 ORDER BY order_id DESC LIMIT 1";
-    const order_res = await pool.query(order_query, [user_id]);
-    const order = order_res.rows[0];
-
-    const order_items_query = "SELECT orderitems.*, products.price AS product_price, orderitems.price AS order_price, name FROM orderitems, products WHERE order_id = $1 AND orderitems.product_id = products.product_id";
-    const order_items = await pool.query(order_items_query, [order.order_id]);
-
-    const order_address_query = "SELECT * FROM orderaddress WHERE order_id = $1";
-    const order_address = await pool.query(order_address_query, [order.order_id]);
-    const address = order_address.rows[0];
-
-    res.status(200).json({ order: order, order_items: order_items.rows, address: address });
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error fetching order confirmation" });
-  }
-
-});
 
 app.get("/recommendations", isAuthenticated, async (req, res) => {
   const user_id = req.session.userId;
