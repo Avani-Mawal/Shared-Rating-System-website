@@ -37,6 +37,7 @@ const YearInBooks = () => {
   const [pagesRead, setPagesRead] = useState(0);
   const [booksRead, setBooksRead] = useState(0);
   const [topAuthors, setTopAuthors] = useState([]);
+  
 
   const handlePrev = () => {
     setYear(year - 1);

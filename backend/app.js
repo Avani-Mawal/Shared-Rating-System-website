@@ -4,16 +4,97 @@ const session = require("express-session");
 const bcrypt = require("bcrypt");
 const cors = require("cors");
 const { Pool } = require("pg");
+const nodemailer = require("nodemailer");
 const app = express();
 const port = 4000;
 
 // PostgreSQL connection
 // NOTE: use YOUR postgres username and password here
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'Bookhive25@gmail.com',          // your Gmail ID
+    pass: 'mhki jjlk frwy ewnd'               // your Gmail App password (not Gmail login password)
+  }
+});
+
+////////////edit
+genres = ["Fiction", "Fantasy", "Audiobook", "Romance", "Young Adult", "Mystery", "Classics", "Contemporary",
+  "Historical Fiction", "Book Club", "Thriller", "Nonfiction", "Science Fiction", "Adventure", "Paranormal",
+  "Crime", "Literature", "Historical", "Childrens", "Mystery Thriller", "Novels", "Humor", "Suspense", "Adult",
+  "Horror", "Chick Lit", "Middle Grade", "Biography", "Magic", "Science Fiction Fantasy", "Urban Fantasy",
+  "Memoir", "Vampires", "Literary Fiction", "History", "High Fantasy", "Paranormal Romance", "Dystopia",
+  "Philosophy", "Graphic Novels", "Realistic Fiction", "Adult Fiction", "Epic Fantasy", "Short Stories",
+  "Contemporary Romance", "Comics", "Supernatural", "Psychology", "School", "Animals", "Self Help", "Comedy",
+  "Biography Memoir", "Science", "Picture Books", "American", "War", "Graphic Novels Comics", "Politics",
+  "Religion", "Detective", "Poetry", "Autobiography"]
+
+
+const genreToIndex = {};
+const indexToGenre = {};
+
+genres.forEach((genre, idx) => {
+  genreToIndex[genre.toLowerCase()] = idx;
+});
+
+genres.forEach((genre, idx) => {
+  indexToGenre[idx] = genre.toLowerCase();
+});
+
+function getGenresFromBitmap(bitmapFromDB) {
+  const selectedGenres = [];
+  const bigBitmap = BigInt(bitmapFromDB); // Safely convert DB value to BigInt
+  
+  for (let i = 0; i < genres.length; i++) {
+    if (bigBitmap & (1n << BigInt(i))) {
+      selectedGenres.push(genres[i]);
+    }
+  }
+  
+  return selectedGenres;
+}
+
+async function sendCompletionEmail(userEmail, bookDetails) {
+  console.log("Sending email to:", userEmail);
+  console.log("Book details:", bookDetails);
+  const mailOptions = {
+    from: 'BookHive@gmail.com',
+    to: userEmail.email,
+    subject: `Congratulations on completing "${bookDetails.title}"!`,
+    html: `
+  <h1>Congratulations on Finishing Your Book!</h1>
+  <p>Hi there,</p>
+  <p>You've just completed reading <strong>${bookDetails.title}</strong> by <em>${bookDetails.author}</em> — what an achievement!</p>
+
+  <p>We hope this book took you on an incredible journey, opened up new perspectives, or simply gave you a chance to relax and enjoy a well-told story. Whether it made you laugh, cry, think, or dream — that's the magic of reading.</p>
+
+  <p>Finishing a book is always a moment worth celebrating, and we're proud to be a part of your reading journey.</p>
+
+  <blockquote style="font-style: italic; margin: 20px 0; padding: 10px 20px; background-color: #f9f9f9; border-left: 4px solid #ccc;">
+    “A reader lives a thousand lives before he dies. The man who never reads lives only one.” – George R.R. Martin
+  </blockquote>
+
+  <p>Thank you for choosing to read with us. Keep turning pages, discovering new stories, and feeding your curiosity.</p>
+
+  <p>📚 Until your next great read,<br>The BookTracker Team</p>
+`
+
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Email sent successfully:', info.response);
+  } catch (error) {
+    console.error('Error sending email:', error);
+  }
+}
+
 const pool = new Pool({
-  user: 'postgres',
+  user: 'mugdha',
   host: 'localhost',
-  database: 'books',
-  password: 'apple',
+  database: 'library',
+  password: 'avaniorzz',
   port: 5432,
 });
 
@@ -61,6 +142,17 @@ app.post('/signup', async (req, res) => {
     // console.log(req.body);
     // 
     // Check if email is already registered
+    let bitmap = 0;
+    console.log("Genres:", genres);
+    for (const genre of genres) {
+      const index = genreToIndex[genre.toLowerCase()];
+      // console.log("Index:", index);
+      if (index !== undefined) {
+        bitmap |= (1 << index);
+      } else {
+        console.warn(`Genre '${genre}' not found in genreToIndex mapping!`);
+      }
+    } 
 
     const emailCheck = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     if (emailCheck.rows.length > 0) {
@@ -76,8 +168,8 @@ app.post('/signup', async (req, res) => {
 
     // Insert user into the database
     const insertQuery = `
-      INSERT INTO users (user_id, username, email, password_hash, first_name, last_name, genres, dob)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO users (user_id, username, email, password_hash, first_name, last_name, genre_bitmap, genres, dob)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     `;
 
     await pool.query(insertQuery, [
@@ -87,7 +179,8 @@ app.post('/signup', async (req, res) => {
       hashedPassword,
       firstName,
       lastName,
-      JSON.stringify(genres), // assuming genres is an array
+      bitmap, // assuming genres is an array
+      genres,
       dob
     ]);
 
@@ -100,6 +193,28 @@ app.post('/signup', async (req, res) => {
   } catch (error) {
     console.error("Error inserting user:", error);
     res.status(500).json({ message: "Error signing up" });
+  }
+});
+
+app.post('/send-completion-mail', async (req, res) => {
+  const { name, author } = req.body;
+  try{
+    console.log("Session UserID:", req.session.userId);
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    console.log("entered send completion mail successfully");
+    const user = req.session.userId;
+    const result = await pool.query('SELECT email FROM users WHERE user_id = $1', [user]);
+    const email = result.rows[0];
+    await sendCompletionEmail(email, {
+      title: name,
+      author: author,
+    });
+    console.log("Email sent successfully");
+  res.json({ success: true });
+  } catch (error) {
+    console.error("Error checking session:", error);
   }
 });
 
@@ -116,13 +231,22 @@ app.get("/all-genres", async (req, res) => {
 });
 
 app.post("/get-recommendations-from-genre", async(req, res) => {
+  // const query = "SELECT * FROM books WHERE (genre_bitmap & $1) != 0 ORDER BY publ_date DESC";
+
   const {selectedGenre} = req.body;
+  console.log("Selected genre:", selectedGenre);
   const userId = await req.session.userId;
   try{
-    const query = "SELECT * FROM books, reviews WHERE reviews.book_id = books.book_id AND books.genre LIKE $1 AND reviews.user_id = $2";
-    const result = await pool.query(query, [`['${selectedGenre}'%`, userId]);
+    // console.log(selectedGenre);
+    const genreName = selectedGenre;
+    const index = genreToIndex[genreName.toLowerCase()];
+    const bitmask = 1 << index;
+    console.log("genreName:", genreName);
+    const query = "SELECT * FROM books, reviews WHERE reviews.book_id = books.book_id AND (books.genre_bitmap & $1) != 0 AND reviews.user_id = $2";
+    const result = await pool.query(query, [bitmask, userId]);
 
     const books = result.rows;
+    console.log("Books:", books);
     if (books.length <= 5) {
       console.log(books.length);
       return res.status(400).json({ message: "Rate atleast 5 books to get recommendations!!" });
@@ -186,11 +310,10 @@ app.post("/get-similar-books", async(req, res) => {
 
 app.get("/user-genres", async (req, res) => {
   try {
-    const result = await pool.query('SELECT genres FROM users where user_id = $1', [req.session.userId]);
-    const genresString = result.rows[0].genres;
-    // console.log(genresString);
-    const genres = JSON.parse(genresString);
-
+    const result = await pool.query('SELECT genre_bitmap FROM users where user_id = $1', [req.session.userId]);
+    console.log("bitmap:", result.rows[0].genre_bitmap);
+    const genres = getGenresFromBitmap(result.rows[0].genre_bitmap);
+    console.log("User genres:", genres);
     res.status(200).json({ message: "Genres fetched successfully", genres });
   } catch (error) {
     console.error("Error fetching genres:", error);
@@ -203,24 +326,23 @@ app.post("/update-fav", async (req, res) => {
   const userId = req.session.userId;
   try {
     // Fetch the user's current genres
-    const result = await pool.query('SELECT genres FROM users WHERE user_id = $1', [userId]);
-    const genresString = result.rows[0]?.genres || "[]";
-    let genres = JSON.parse(genresString);
+    const result = await pool.query('SELECT genre_bitmap FROM users WHERE user_id = $1', [userId]);
+    // const genresString = result.rows[0]?.genres || "[]";
+
+    let new_map = result.rows[0].genre_bitmap; // Start from current bitmap
 
     if (action === 1) {
-      // Add genre to favorites if not already present
-      if (!genres.includes(genre)) {
-        genres.push(genre);
-      }
+      new_map = new_map | (1 << genreToIndex[genre.toLowerCase()]); // Set the bit
+
     } else if (action === 0) {
       // Remove genre from favorites
-      genres = genres.filter((g) => g !== genre);
+      new_map = new_map & ~(1 << genreToIndex[genre.toLowerCase()]); // Clear the bit
     } else {
       return res.status(400).json({ message: "Invalid action" });
     }
 
-    // Update the user's genres in the database
-    await pool.query('UPDATE users SET genres = $1 WHERE user_id = $2', [JSON.stringify(genres), userId]);
+   // Update the user's genres in the database
+    await pool.query('UPDATE users SET genre_bitmap = $1 WHERE user_id = $2', [new_map, userId]);
 
     res.status(200).json({ message: "Favorites updated successfully", genres });
   } catch (error) {
@@ -283,9 +405,13 @@ app.post("/genre-books", async (req, res) => {
   const { genres } = req.body;
   try {
     let books = {};
+    
     for (let i = 0; i < genres.length; i++) {
-      const query = "SELECT * FROM books WHERE genre LIKE $1 ORDER BY publ_date DESC";
-      const result = await pool.query(query, [`%${genres[i]}%`]);
+      const genreName = genres[i];
+      const index = genreToIndex[genreName.toLowerCase()];
+      const bitmask = 1 << index; // Calculate the bitmask for that genre
+      const query = "SELECT * FROM books WHERE (genre_bitmap & $1) != 0 ORDER BY publ_date DESC";
+      const result = await pool.query(query, [bitmask]);
       if (result.rows.length !== 0) {
         books[genres[i]] = result.rows;
       }
@@ -401,7 +527,7 @@ app.get('/books/:bookId', async (req, res) => {
         books.name AS name,
         books.isbn,
         books.lang_code,
-        books.genre AS genre,
+        books.genre_bitmap AS genre,
         books.publ_date,
         books.avg_rating,
         books.image_link,
@@ -429,7 +555,7 @@ app.get('/books/:bookId', async (req, res) => {
       [(bookQuery.rows[0].author_id)]
     );
 
-    genres = JSON.parse(bookQuery.rows[0].genre.replace(/'/g, '"'));
+    let genres = getGenresFromBitmap(bookQuery.rows[0].genre);
     res.json({
       book: {
         ...bookQuery.rows[0],

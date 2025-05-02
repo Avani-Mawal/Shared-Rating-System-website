@@ -5,6 +5,7 @@ DROP TABLE IF EXISTS UserBooks CASCADE;
 DROP TABLE IF EXISTS Bookshelves CASCADE;
 DROP TABLE IF EXISTS Reviews CASCADE;
 DROP TABLE IF EXISTS Genre CASCADE;
+DROP TABLE IF EXISTS DraftReviews CASCADE;
 CREATE TABLE Users (
     user_id SERIAL PRIMARY KEY,
     username VARCHAR(100) NOT NULL,
@@ -12,11 +13,11 @@ CREATE TABLE Users (
     last_name VARCHAR(100) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
-    genres TEXT NOT NULL, -- Comma-separated list of preferred genres
+    genres TEXT, -- Comma-separated list of preferred genres
+    genre_bitmap BIGINT DEFAULT 0,
     date_joined TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     dob DATE NOT NULL
 );
-
 
 CREATE TABLE Books (
     book_id SERIAL PRIMARY KEY,
@@ -27,12 +28,15 @@ CREATE TABLE Books (
     isbn CHAR(13) NOT NULL,
     lang_code CHAR(2) ,
     genre VARCHAR(255),
+    base_genre VARCHAR(255), -- Base genre for the user
+
     num_pages INT ,
     rating_count INT NOT NULL,
     review_count INT NOT NULL,
     publisher VARCHAR(255) ,
     image_link TEXT NOT NULL,
-    description TEXT
+    description TEXT,
+    genre_bitmap BIGINT DEFAULT 0
     -- UNIQUE (isbn)
 );
 
@@ -80,3 +84,20 @@ CREATE TABLE Genre(
     genre_desc TEXT
 );
 
+CREATE TABLE Videos (
+    video_id SERIAL PRIMARY KEY,
+    thumbnail_url TEXT NOT NULL,
+    video_link TEXT NOT NULL,
+    video_name VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE DraftReviews(
+    review_id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL,
+    book_id INT NOT NULL,
+    rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    review_text TEXT,
+    review_date DATE DEFAULT CURRENT_DATE,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (book_id) REFERENCES Books(book_id) ON DELETE CASCADE
+);

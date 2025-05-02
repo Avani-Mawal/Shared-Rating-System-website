@@ -211,6 +211,25 @@ const Books = () => {
     }
   };
 
+
+  const handleCompletion = async (bookname, bookauthor)  =>{
+    const response = await fetch(`${apiUrl}/send-completion-mail`, {
+      method: 'POST',
+      credentials: "include",
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name : bookname , author : bookauthor }), // or book info directly
+    });
+  
+    const result = await response.json();
+    if (result.success) {
+      alert('Email sent successfully!');
+    } else {
+      alert('Failed to send email.');
+    }
+  };
+
   const handleShelfSort = async (shelfName) => {
     try {
       const response = await fetch(`${apiUrl}/sort-shelves`, {
@@ -440,17 +459,17 @@ const Books = () => {
                 Review Drafts
               </a>
             </li>
-            <li><Link to="#" className="shelf-link">Reading Challenge</Link></li>
+            {/* <li><Link to="#" className="shelf-link">Reading Challenge</Link></li> */}
             <li><Link to="/year-in-books" className="shelf-link">Year in Books</Link></li>
-            <li><Link to="#" className="shelf-link">Reading stats</Link></li>
+            {/* <li><Link to="#" className="shelf-link">Reading stats</Link></li> */}
           </ul>
 
-          <h4>Tools</h4>
+          {/* <h4>Tools</h4>
           <ul className="shelves-list">
             <li><Link to="#" className="shelf-link">Find duplicates</Link></li>
             <li><Link to="#" className="shelf-link">Widgets</Link></li>
             <li><Link to="#" className="shelf-link">Import and export</Link></li>
-          </ul>
+          </ul> */}
         </div>
 
         {/* Main Content */}
@@ -547,7 +566,10 @@ const Books = () => {
                         <input
                           type="date"
                           className="date-input"
-                          onChange={(e) => handleDateAdded(book.book_id, e.target.value)}
+                          onChange={(e) => {
+                            handleDateAdded(book.book_id, e.target.value);
+                            handleCompletion(book.name, book.author_name);
+                          }}
                         />
                       )}
                     </div>

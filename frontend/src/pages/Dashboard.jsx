@@ -131,7 +131,7 @@ const Dashboard = () => {
             maxWidth: "90%",
           }}
         >
-          Welcome to BookReads, {username}!
+          Welcome to BookHive, {username}!
         </div>
       </div>
 

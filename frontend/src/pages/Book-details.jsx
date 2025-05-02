@@ -212,7 +212,7 @@ const Book = () => {
             <img src={book.image_link} alt={book.name} className="cover" />
             <button
               className="amazon-button"
-              onClick={() => window.open(book.amazon_link, "_blank")}
+              onClick={() => window.open(`https://www.amazon.com/s?k=${book.name.replace(/ /g, "+")}`, "_blank")}
             >
               Buy on Amazon
             </button>

@@ -1,3 +1,4 @@
+
 import json
 import pickle
 import pandas as pd
@@ -49,7 +50,7 @@ def load_data_from_db():
 
 # Load data from database and save to CSV
 
-# df = load_data_from_db()
+df = load_data_from_db()
 df = pd.read_csv("books_with_authors.csv")
 
 # Convert genre string to list and get first element
