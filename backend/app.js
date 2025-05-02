@@ -115,6 +115,55 @@ app.get("/all-genres", async (req, res) => {
   }
 });
 
+app.post("/get-recommendations-from-genre", async(req, res) => {
+  const {selectedGenre} = req.body;
+  const userId = await req.session.userId;
+  try{
+    const query = "SELECT * FROM books, reviews WHERE reviews.book_id = books.book_id AND books.genre LIKE $1 AND reviews.user_id = $2";
+    const result = await pool.query(query, [`['${selectedGenre}'%`, userId]);
+
+    const books = result.rows;
+    if (books.length <= 5) {
+      console.log(books.length);
+      return res.status(400).json({ message: "Rate atleast 5 books to get recommendations!!" });
+    }
+
+    bookNames = [];
+    bookGenres = [];
+    bookRatings = [];
+    for (let i = 0; i < books.length; i++) {
+      bookNames.push(books[i].name);
+      bookGenres.push(selectedGenre);
+      bookRatings.push(books[i].rating);
+    }
+
+    const params = new URLSearchParams();
+    bookNames.forEach(name => params.append('book_names[]', name));
+    bookGenres.forEach(genre => params.append('book_genres[]', genre));
+    bookRatings.forEach(rating => params.append('book_ratings[]', rating));
+
+    // Make the GET request to the Flask endpoint
+    const response = await fetch(`http://127.0.0.1:5000/reccomendation-from-books?${params.toString()}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    let recBooks= [];
+    for (let i = 0; i < data.length; i++) {
+      const query = "SELECT * FROM books WHERE book_id = $1";
+      const result = await pool.query(query, [data[i]]);
+      if (result.rows.length !== 0) {
+        recBooks.push(result.rows[0]);
+      }
+    }
+    res.status(200).json({ message: "Recommendations fetched successfully", books: recBooks });
+  } catch (error) {
+    console.error("Error fetching recommendations:", error);
+    res.status(500).json({ message: "Error fetching recommendations" });
+  }
+});
+
 app.post("/get-similar-books", async(req, res) => {
   const {name , genre} = req.body;
   try {
@@ -1069,10 +1118,7 @@ app.get("/order-confirmation", isAuthenticated, async (req, res) => {
 app.get("/recommendations", isAuthenticated, async (req, res) => {
   const user_id = req.session.userId;
   try {
-    const query = "SELECT * FROM recommendations WHERE user_id = $1";
-    const result = await pool.query(query, [user_id]);
-    const recommendations = result.rows;
-    res.status(200).json({ message: "Recommendations fetched successfully", recommendations });
+    
   } catch (error) {
     console.error("Error fetching recommendations:", error);
     res.status(500).json({ message: "Error fetching recommendations" });
