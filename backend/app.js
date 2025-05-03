@@ -308,6 +308,20 @@ app.post("/get-similar-books", async(req, res) => {
   }
 });
 
+// app.get("/user-genres", async (req, res) => {
+//   try {
+//     const result = await pool.query('SELECT genres FROM users where user_id = $1', [req.session.userId]);
+//     const genresString = result.rows[0].genres;
+//     // console.log(genresString);
+//     const genres = JSON.parse(genresString);
+
+//     res.status(200).json({ message: "Genres fetched successfully", genres });
+//   } catch (error) {
+//     console.error("Error fetching genres:", error);
+//     res.status(500).json({ message: "Error fetching genres" });
+//   }
+// });
+
 app.get("/user-genres", async (req, res) => {
   try {
     const result = await pool.query('SELECT genre_bitmap FROM users where user_id = $1', [req.session.userId]);
@@ -320,6 +334,7 @@ app.get("/user-genres", async (req, res) => {
     res.status(500).json({ message: "Error fetching genres" });
   }
 });
+
 
 app.post("/update-fav", async (req, res) => {
   const { genre, action } = req.body;
@@ -422,6 +437,7 @@ app.post("/genre-books", async (req, res) => {
     res.status(500).json({ message: "Error fetching books" });
   }
 });
+
 
 ////////////////////////////////////////////////////
 // Mugdha : Using this API to list books in bookshelves
@@ -565,7 +581,7 @@ app.get('/books/:bookId', async (req, res) => {
       author: authorQuery.rows[0],
       shelves: shelvesQuery.rows,
     });
-  }
+    }
   catch (error){
     console.log("Error getting books page : ", error);
   }
@@ -1164,82 +1180,6 @@ app.post("/genre-description", async (req, res) => {
   }
 });
 
-// APIs for placing order and getting confirmation
-// TODO: Implement place-order API, which updates the order,orderitems,cart,orderaddress tables
-app.post("/place-order", isAuthenticated, async (req, res) => {
-  const user_id = req.session.userId;
-  const { street, city, state, pincode } = req.body.address;
-  // console.log(req.body);
-  try {
-    const check_query = "SELECT * FROM Cart, Products WHERE user_id = $1 AND item_id = product_id AND stock_quantity < quantity";
-    const result = await pool.query(check_query, [user_id]);
-    if (result.rows.length !== 0) {
-      const item = result.rows[0];
-      return res.status(400).json({ message: `Insufficient stock for ${item.name}` });
-    }
-
-    const query = "SELECT * FROM Cart, Products WHERE user_id = $1 AND item_id = product_id ORDER BY item_id";
-    const cart = await pool.query(query, [user_id]);
-
-    const order_date = new Date();
-    const total_amount = await pool.query('SELECT SUM(price * quantity) FROM Cart, Products WHERE user_id = $1 AND item_id = product_id', [user_id]);
-
-    const insert_query = "INSERT INTO orders (order_id, user_id, order_date, total_amount) VALUES ((SELECT COUNT(*) + 1 FROM orders), $1, $2, $3) RETURNING order_id";
-
-    const order_result = await pool.query(insert_query, [user_id, order_date, total_amount.rows[0].sum]);
-    const order_id = order_result.rows[0].order_id;
-
-    const insert_query2 = "INSERT INTO orderitems (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)";
-    if (cart.rows.length === 0) {
-      return res.status(400).json({ message: "Cart is empty" });
-    }
-
-    for (let i = 0; i < cart.rows.length; i++) {
-      await pool.query(insert_query2, [order_id, cart.rows[i].item_id, cart.rows[i].quantity, cart.rows[i].price * cart.rows[i].quantity]);
-    }
-
-    const reduce_stock = "UPDATE products SET stock_quantity = stock_quantity - (SELECT quantity FROM cart WHERE user_id = $1 AND item_id = product_id) WHERE product_id = (SELECT item_id FROM cart WHERE user_id = $1 AND item_id = product_id)";
-    await pool.query(reduce_stock, [user_id]);
-
-    const delete_query = "DELETE FROM cart WHERE user_id = $1";
-    await pool.query(delete_query, [user_id]);
-    // console.log(street, city, state, pincode);
-    const insert_address_query = "INSERT INTO OrderAddress (order_id, street, city, state, pincode) VALUES ($1, $2, $3, $4, $5)";
-    await pool.query(insert_address_query, [order_id, street, city, state, pincode]);
-
-    // console.log("hi sansku");
-    res.status(200).json({ message: "Order placed successfully" });
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error placing order" });
-  }
-});
-
-// API for order confirmation
-// TODO: same as lab4
-app.get("/order-confirmation", isAuthenticated, async (req, res) => {
-  const user_id = req.session.userId;
-  try {
-    const order_query = "SELECT * FROM orders WHERE user_id = $1 ORDER BY order_id DESC LIMIT 1";
-    const order_res = await pool.query(order_query, [user_id]);
-    const order = order_res.rows[0];
-
-    const order_items_query = "SELECT orderitems.*, products.price AS product_price, orderitems.price AS order_price, name FROM orderitems, products WHERE order_id = $1 AND orderitems.product_id = products.product_id";
-    const order_items = await pool.query(order_items_query, [order.order_id]);
-
-    const order_address_query = "SELECT * FROM orderaddress WHERE order_id = $1";
-    const order_address = await pool.query(order_address_query, [order.order_id]);
-    const address = order_address.rows[0];
-
-    res.status(200).json({ order: order, order_items: order_items.rows, address: address });
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error fetching order confirmation" });
-  }
-
-});
 
 app.get("/recommendations", isAuthenticated, async (req, res) => {
   const user_id = req.session.userId;
