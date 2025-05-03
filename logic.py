@@ -23,9 +23,9 @@ CORS(app)  # This will allow all domains to access your API
 
 # Database connection parameters
 DB_PARAMS = {
-    'dbname': 'books',
-    'user': 'postgres',
-    'password': 'apple',
+    'dbname': 'library',
+    'user': 'mugdha',
+    'password': 'avaniorzz',
     'host': 'localhost',
     'port': '5432'
 }
@@ -35,7 +35,7 @@ def load_data_from_db():
         # Create SQLAlchemy engine
         engine = create_engine(f'postgresql://{DB_PARAMS["user"]}:{DB_PARAMS["password"]}@{DB_PARAMS["host"]}:{DB_PARAMS["port"]}/{DB_PARAMS["dbname"]}')
         # Read data from database
-        query = "SELECT books.name, authors.name as author, description, book_id, genre FROM books, authors WHERE books.author_id + 1 = authors.author_id"  # Adjust table name as needed
+        query = "SELECT books.name, authors.name as author, description, book_id, genre, base_genre FROM books, authors WHERE books.author_id + 1 = authors.author_id"  # Adjust table name as needed
         df = pd.read_sql(query, engine)
         
         # Save to CSV
@@ -54,7 +54,7 @@ df = load_data_from_db()
 df = pd.read_csv("books_with_authors.csv")
 
 # Convert genre string to list and get first element
-df['genre'] = df['genre'].apply(lambda x: eval(x)[0] if isinstance(x, str) else x)
+df['genre'] = df['base_genre']
 genres = df['genre']
 
 # Function for removing NonAscii characters

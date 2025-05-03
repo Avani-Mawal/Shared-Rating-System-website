@@ -1,4 +1,4 @@
-/* Navbar.css */
+/* Navbar.css
 
 body{
     font-family: Arial, sans-serif;
@@ -112,4 +112,81 @@ body{
   .dropdown-menu div:hover {
     background-color: #f0f0f0;
   }
+   */
+
+   .navbar-links {
+    display: flex;
+    align-items: center;
+  }
   
+  .navbar-links li {
+    list-style: none;
+    margin: 0 1rem;
+    position: relative;
+  }
+  
+  .navbar-links a,
+  .navbar-links .nav-link {
+    text-decoration: none;
+    color: #382110;
+    font-weight: 500;
+    transition: color 0.2s ease;
+    cursor: pointer;
+  }
+  
+  .navbar-links a:hover,
+  .navbar-links .nav-link:hover {
+    color: #6f4e37;
+  }
+  
+  /* Dropdown box styling inside navbar */
+  .dropdown-box {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: white;
+    border: 1px solid #ddd;
+    box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    min-width: 150px;
+    padding: 0.5rem 0;
+    border-radius: 4px;
+  }
+  
+  /* Dropdown items */
+  .dropdown-box p {
+    padding: 10px 20px;
+    margin: 0;
+    color: #382110;
+    font-weight: 500;
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+  
+  .dropdown-box p:hover {
+    background-color: #f4f1ea;
+  }
+
+  .navbar-links li {
+    list-style: none;
+    margin: 0;
+    padding: 0 1rem;
+    position: relative;
+  }
+
+  .navbar-links .nav-link {
+    display: inline-block; /* makes it align like <a> */
+    padding: 0;
+    margin: 0;
+    color: #382110;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: color 0.2s ease;
+  }
+  
+  .navbar-links .nav-link:hover {
+    color: #6f4e37;
+  }

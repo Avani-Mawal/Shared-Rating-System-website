@@ -11,6 +11,7 @@ const Navbar = () => {
   const [loading, setLoading] = useState(true);
   const [showPopup, setShowPopup] = useState(false);
   const [userDetails, setUserDetails] = useState({});
+  // const fileInputRef = useRef(null);
 
   useEffect(() => {
     const checkLoginStatus = async () => {
@@ -77,6 +78,14 @@ const Navbar = () => {
     );
   }
 
+
+  const getInitials = () => {
+    const first = userDetails.first_name?.charAt(0).toUpperCase() || "";
+    const last = userDetails.last_name?.charAt(0).toUpperCase() || "";
+    return first + last;
+  };
+
+
   const handleDropdownClick = (path) => {
     navigate(path);
     setShowDropdown(false);
@@ -93,9 +102,28 @@ const Navbar = () => {
         <li><a href="/myBooks" className="nav-link">My Books</a></li>
         <li><a href="/genres" className="nav-link">Genre</a></li>
         <li><a href="/recommendations" className="nav-link">Recommendations</a></li>
-        <li><a href="/community" className="nav-link">Community</a></li>
-      </ul>
+        <li>
+        
+        <div
+          className="nav-link"
+          onClick={() => setShowDropdown(!showDropdown)}
+        >
+          Community ▾
+          {showDropdown && (
+            <div className="dropdown-box">
+              <p onClick={() => handleDropdownClick("/Bookreviews")}>
+                Book Reviews
+              </p>
+              <p onClick={() => handleDropdownClick("/communityauthors")}>
+                Authors
+              </p>
+            </div>
+          )}
+        </div>
 
+        </li>
+      </ul>
+      
       <div className="navbar-search">
         <SearchBar onSearchResults={() => {}} />
       </div>
