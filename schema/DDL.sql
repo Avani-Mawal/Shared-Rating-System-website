@@ -86,9 +86,10 @@ CREATE TABLE Genre(
 
 CREATE TABLE Videos (
     video_id SERIAL PRIMARY KEY,
-    thumbnail_url TEXT NOT NULL,
-    video_link TEXT NOT NULL,
-    video_name VARCHAR(255) NOT NULL
+    thumbnail_url TEXT,
+    video_link TEXT,
+    video_name VARCHAR(255) ,
+    user_id INT
 );
 
 CREATE TABLE DraftReviews(

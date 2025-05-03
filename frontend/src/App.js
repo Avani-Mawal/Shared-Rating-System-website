@@ -13,6 +13,8 @@ import Search from "./pages/search";
 import AuthorList from "./pages/Author-list";
 import AuthorDetails from "./pages/Author";
 import Year_Books from "./pages/Year-in-Books";
+import Bookreviews from "./pages/Bookreviews";
+import CommunityAuthors from "./pages/communityauthors";
 
 function App() {
   return (
@@ -30,7 +32,10 @@ function App() {
       <Route path="/AuthorList" element={<AuthorList />} /> 
       <Route path="/authors/:authorId" element={<AuthorDetails />} /> 
       <Route path="/year-in-books" element={<Year_Books />} />
-      <Route path="*" element={<NotFound />} />
+      
+      <Route path="/Bookreviews" element={<Bookreviews />} />
+      <Route path="/communityauthors" element={<CommunityAuthors />} />
+      <Route path="*" element={<NotFound />} /> 
     </Routes>
   );
 }

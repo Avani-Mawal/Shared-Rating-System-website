@@ -242,7 +242,7 @@ app.post("/get-recommendations-from-genre", async(req, res) => {
     const index = genreToIndex[genreName.toLowerCase()];
     const bitmask = 1 << index;
     console.log("genreName:", genreName);
-    const query = "SELECT * FROM books, reviews WHERE reviews.book_id = books.book_id AND (books.genre_bitmap & $1) != 0 AND reviews.user_id = $2";
+    const query = "SELECT * FROM books, reviews WHERE reviews.book_id = books.book_id AND book.base_genre = $1 AND reviews.user_id = $2";
     const result = await pool.query(query, [bitmask, userId]);
 
     const books = result.rows;
@@ -1338,6 +1338,107 @@ app.get('/user-details', async (req, res) => {
   } catch (err) {
     console.error("Error fetching user details:", err);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Fetch all videos - Anushka
+app.get('/videos', async (req, res) => {
+  try {
+    const sql = "SELECT video_id, thumbnail_url, video_link, video_name FROM videos";
+    const result = await pool.query(sql);
+
+    res.status(200).json({ videos: result.rows });
+  } catch (err) {
+    console.error("Error fetching videos:", err);
+    res.status(500).json({ message: "Error fetching videos" });
+  }
+});
+
+app.post("/videosinsert", async (req, res) => {
+  const { video_link } = req.body;
+  const user_id = req.session.userId;
+
+  if (!video_link || !user_id) {
+    return res.status(400).json({ message: "Missing video link or user not logged in" });
+  }
+
+  try {
+    const oEmbedUrl = `https://www.youtube.com/oembed?url=${video_link}&format=json`;
+    const metadataRes = await fetch(oEmbedUrl);
+    if (!metadataRes.ok) throw new Error("Failed to fetch metadata from YouTube");
+
+    const metadata = await metadataRes.json();
+    const video_name = metadata.title;
+    const thumbnail_url = metadata.thumbnail_url;
+
+    const result = await pool.query(
+      "INSERT INTO videos (video_link, user_id, video_name, thumbnail_url) VALUES ($1, $2, $3, $4)",
+      [video_link, user_id, video_name, thumbnail_url]
+    );
+    // res.status(201).json(result.rows[0]);
+    res.status(200).json({message: "Video added successfully!"});
+  } catch (err) {
+    console.error("Error adding video:", err);
+    res.status(500).json({ message: "Failed to add video" });
+  }
+});
+
+// author details fro author pages in community Anushka
+app.get("/authors-in-community", async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT author_id, name, image_link, bio FROM Authors"
+    );
+    res.json({ authors: result.rows });
+  } catch (err) {
+    console.error("Error fetching authors:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// community-bookreviews-myvideos Anushka
+app.get("/myvideos", async (req, res) => {
+  const user_id = req.session.userId;
+
+  if (!user_id) {
+    return res.status(401).json({ message: "User not authenticated" });
+  }
+
+  try {
+    const result = await pool.query(
+      "SELECT * FROM videos WHERE user_id = $1",
+      [user_id]
+    );
+
+    // if(result.rows.length === 0) {
+    //   return res.status(404).json({ message: "You don't have any uploaded videos!" });
+    // }
+
+    res.status(200).json({ videos: result.rows });
+  } catch (err) {
+    console.error("Error fetching user videos:", err);
+    res.status(500).json({ message: "Failed to fetch videos" });
+  }
+});
+
+//search authors by name in community Anushka
+app.get("/search-authors", async (req, res) => {
+  try {
+    const searchQuery = req.query.q;
+
+    if (!searchQuery) {
+      return res.status(400).json({ error: "Search query is required" });
+    }
+
+    const result = await pool.query(
+      "SELECT author_id, name, image_link FROM Authors WHERE name ILIKE $1",
+      [`%${searchQuery}%`]
+    );
+
+    return res.status(200).json({ authors: result.rows });
+  } catch (error) {
+    console.error("Error searching authors:", error);
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
