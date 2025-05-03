@@ -29,6 +29,7 @@ body{
     font-weight: 500;
     transition: color 0.2s ease;
   }
+
   
   .navbar-links a:hover {
     color: #6f4e37;

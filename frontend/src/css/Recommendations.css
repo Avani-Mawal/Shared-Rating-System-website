@@ -12,18 +12,6 @@
   --genre-transition: all 0.3s cubic-bezier(.4, 0, .2, 1);
 }
 
-/* General container styling */
-.home-container {
-  margin-top: 50px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px;
-  font-family: 'Arial', sans-serif;
-  background-color: var(--genre-bg);
-  color: var(--genre-primary);
-}
-
 /* Main wrapper for content */
 .main-wrapper {
   width: 100%;

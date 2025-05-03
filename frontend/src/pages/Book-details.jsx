@@ -34,7 +34,7 @@ const Book = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name : bname.name , genre : bgenre[0] }),
+        body: JSON.stringify({ name : bname.name , genre : bgenre }),
       });
       if (!response.ok) {
         throw new Error('Network response was not ok');
@@ -83,8 +83,8 @@ const Book = () => {
         setRating(data.book.reviews || 0);
         setGenres(data.genres || []);
         setShelves(data.shelves);
-        console.log("LLL");
-        getSimilarBooks(data.book, data.genres);
+        console.log("data.book.base_genre", data.book.base_genre);
+        getSimilarBooks(data.book, data.book.base_genre);
       } catch (error) {
         console.error("Error fetching book:", error);
       }
@@ -304,10 +304,12 @@ const Book = () => {
             </div>
 
             <div className="meta-section">
-              <p><strong>Genres:</strong> {
+              <p><strong>Genres: </strong> 
+              {book.base_genre && <span className="base-genre">{book.base_genre}, </span>}
+              {
                 genres.length > 0 &&
                 genres.map((genre, idx) => (
-                  <a key={idx} href={`/genre/${genre}`}>
+                  genre !== book.base_genre && <a key={idx} href={`/genre/${genre}`}>
                     <span className="genre">{genre}</span>
                     {idx < genres.length - 1 ? ", " : ""}
                   </a>

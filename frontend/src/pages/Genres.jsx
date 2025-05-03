@@ -117,8 +117,11 @@ const Genres = () => {
     }
   }, [genresLoaded, favGenresLoaded]);
 
-  const handleGenreSearch = (e) => {
-    e.preventDefault();
+  useEffect(() => {
+    handleGenreSearch();
+  }, [genreQuery]);
+
+  const handleGenreSearch = () => {
     const filteredGenres = allGenres.filter(genre => 
       genre.genre_name.toLowerCase().includes(genreQuery.toLowerCase())
     );
@@ -151,14 +154,12 @@ const Genres = () => {
               type="text"
               value={genreQuery}
               onChange={e => {
-                setGenreQuery(e.target.value);
-                if (e.target.value.length > 0) {
-                  const filtered = allGenres.filter(genre =>
-                    genre.genre_name.toLowerCase().includes(e.target.value.toLowerCase())
-                  );
-                  setSearchResults(filtered);
+                const query = e.target.value;
+                setGenreQuery(query);
+                if (query.trim() === '') {
+                  setSearchResults([]); // Clear results if query is empty
                 } else {
-                  setSearchResults([]);
+                  handleGenreSearch(e); // Perform search if query is not empty
                 }
               }}
               placeholder="Find a genre by name"
@@ -167,9 +168,9 @@ const Genres = () => {
             />
             {genreQuery && searchResults.length > 0 && (
               <div className="genre-search-dropdown">
-                {searchResults.map(g => (
+                {searchResults.map((g,idx) => (
                   <div
-                    key={g.genre_name}
+                    key={idx}
                     className="genre-search-dropdown-item"
                     onClick={() => {
                       window.location.href = `/genre/${g.genre_name.toLowerCase()}`;

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { apiUrl } from "../config/config";
+import { FaSearch } from "react-icons/fa";
 import "../css/SearchBar.css";
 
 const SearchBar = () => {
@@ -56,9 +57,7 @@ const SearchBar = () => {
             className="search-input"
         />
         <button type="submit" className="search-button">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" className="bi bi-search" viewBox="0 0 16 16">
-                <path d="M11.742 10.344a4.5 4.5 0 1 1-6.388-6.388 4.5 4.5 0 0 1 6.388 6.388zm-.707-.707a3.5 3.5 0 1 0-.707.707l3.5 3.5a1 1 0 0 0 1.415-1.414l-3.5-3.5z"/>
-            </svg>
+          <FaSearch size={18} />
         </button>
         </form>
         {showDropdown && books.length > 0 && (

@@ -56,7 +56,7 @@ body {
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(44,62,80,0.07);
-  overflow: hidden;
+  overflow: visible;
   border: 1.5px solid #d0d7de;
   height: 40px;
 }
@@ -76,8 +76,10 @@ body {
 }
 
 .genre-search-form input:focus {
+  border: .5px solid var(--genres-secondary);
+  border-radius: 1.5px;
   box-shadow: 0 0 0 2px #b3d8f6;
-  background: #f8f9fa;
+  /* background: #f8f9fa; */
 }
 
 .genre-search-form button {
@@ -369,10 +371,12 @@ body {
   position: absolute;
   left: 0;
   right: 0;
-  top: 42px;
+  top: 100%;
   background: #fff;
   border: 1.5px solid #d0d7de;
   border-radius: 8px;
+  border-top-left-radius: 0%;
+  border-top-right-radius: 0%;
   box-shadow: 0 4px 16px rgba(44,62,80,0.10);
   width: 100%;
   max-height: 220px;

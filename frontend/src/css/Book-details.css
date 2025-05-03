@@ -546,4 +546,8 @@
   background-color: var(--primary-color);
   transform: translateY(-2px);
 }
-    
+
+.base-genre {
+  color: var(--secondary-color);
+  font-weight: 600;
+}

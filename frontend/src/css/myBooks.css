@@ -215,7 +215,6 @@
 
 .search-button:hover {
   background-color: var(--primary-color);
-  transform: translateY(-2px);
 }
 
 /* Books Table Styles */

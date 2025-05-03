@@ -2,6 +2,7 @@ import React, { useEffect, useState, use } from "react";
 import { apiUrl } from "../config/config";
 import { useLocation, useSearchParams } from "react-router";
 import Navbar from "../components/Navbar";
+import "../css/Search.css";
 
 const Search = () => {
   const [searchParams] = useSearchParams();
@@ -31,8 +32,7 @@ const Search = () => {
   return (
     <div className="home-container">
       <Navbar />
-
-      <section className="hero">
+      <div className="search-background">
         <h1>Search for Books</h1>
         <p>Find your next favorite read by title, author, or keyword.</p>
         <form onSubmit={handleSearch} className="search-bar">
@@ -47,8 +47,7 @@ const Search = () => {
             Search
           </button>
         </form>
-      </section>
-
+      </div>
       <section className="popular-books">
         {books.length === 0 && query !== "" ? (
           <p>No books found.</p>
@@ -57,7 +56,7 @@ const Search = () => {
             {books.length === 0 ? (<p>Search for a book to see results.</p>) : null}
             {books.map((book) => (
               <a href={`/books/${book.book_id}`} key={book.book_id} className="book-card">
-                <div key={book.book_id} className="book-card">
+                <div key={book.book_id} >
                   <img
                     src={book.image_link}
                     alt={book.name}

@@ -55,24 +55,6 @@ const Dashboard = () => {
     }
   };
 
-  // // Logout function
-  // const handleLogout = async () => {
-  //   try {
-  //     const response = await fetch(`${apiUrl}/logout`, {
-  //       method: "POST",
-  //       credentials: "include",
-  //     });
-  //     if (response.ok) {
-  //       navigate("/login");
-  //     } else {
-  //       console.error("Logout failed");
-  //     }
-  //   } catch (error) {
-  //     console.error("Error during logout:", error);
-  //   }
-  // };
-
-  // Fetch trending books
   useEffect(() => {
     const fetchTrending = async () => {
       try {
@@ -151,13 +133,14 @@ const Dashboard = () => {
           <div
             key={index}
             style={{
-              minWidth: "160px",
+              minWidth: "200px",
               maxWidth: "160px",
               borderRadius: "8px",
               overflow: "hidden",
               boxShadow: "0 2px 5px rgba(0, 0, 0, 0.2)",
               backgroundColor: "#fff",
             }}
+          className="book-card"
           >
             <Link to={`/books/${book.book_id}`}>
               <img
@@ -214,13 +197,14 @@ const Dashboard = () => {
           <div
             key={index}
             style={{
-              minWidth: "160px",
-              maxWidth: "160px",
+              minWidth: "200px",
+              maxHeight: "380px",
               borderRadius: "8px",
               overflow: "hidden",
               boxShadow: "0 2px 5px rgba(0, 0, 0, 0.2)",
               backgroundColor: "#fff",
             }}
+          className="book-card"
           >
             <Link to={`/books/${book.book_id}`}>
               <img
